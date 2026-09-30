@@ -1,0 +1,13 @@
+target/
+node_modules/
+models/*.gguf
+models/*.bin
+.qodo/
+*.pyc
+__pycache__/
+.venv/
+dist/
+build/
+benchmarks/reports/*.json
+benchmarks/reports/*.md
+!benchmarks/reports/.gitkeep
