@@ -1,5 +1,6 @@
 pub mod audio;
 pub mod resample;
+pub mod vad;
 
 pub fn crate_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
