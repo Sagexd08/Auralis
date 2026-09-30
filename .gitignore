@@ -11,3 +11,4 @@ build/
 benchmarks/reports/*.json
 benchmarks/reports/*.md
 !benchmarks/reports/.gitkeep
+.worktrees/
