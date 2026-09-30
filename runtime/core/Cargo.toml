@@ -11,6 +11,8 @@ path = "src/lib.rs"
 anyhow = "1"
 thiserror = "1"
 rubato = "0.15"
+cpal = "0.15"
+crossbeam-channel = "0.5"
 
 [dev-dependencies]
 hound = "3.5"

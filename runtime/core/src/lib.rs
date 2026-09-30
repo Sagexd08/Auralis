@@ -1,3 +1,4 @@
+pub mod audio;
 pub mod resample;
 
 pub fn crate_version() -> &'static str {
