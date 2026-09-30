@@ -10,6 +10,7 @@ path = "src/lib.rs"
 [dependencies]
 anyhow = "1"
 thiserror = "1"
+rubato = "0.15"
 
 [dev-dependencies]
 hound = "3.5"
