@@ -1,0 +1,15 @@
+[package]
+name = "auralis-runtime"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "auralis_runtime"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = "1"
+thiserror = "1"
+
+[dev-dependencies]
+hound = "3.5"
