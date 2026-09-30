@@ -1,4 +1,5 @@
 pub mod audio;
+pub mod denoise;
 pub mod resample;
 pub mod vad;
 
