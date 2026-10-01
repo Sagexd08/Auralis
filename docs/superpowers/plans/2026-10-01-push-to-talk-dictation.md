@@ -1364,6 +1364,33 @@ git commit -m "docs: record Phase 1 push-to-talk manual verification results"
 
 ---
 
+## Verification Results
+
+Automated verification (performed by the implementing agent, no human available for
+voice input during this session):
+
+- Model used: CPU build (`ggml-base.en-q5_1.bin`, 59.12 MB). CUDA (Task 9) stayed
+  deferred — no CUDA Toolkit installed on this machine (`nvcc` not found).
+- `cargo test -p auralis-runtime` — 13 unit tests + the `jfk.wav` STT integration
+  test all pass. The integration test ran real whisper.cpp inference end-to-end and
+  correctly transcribed "...ask not what your country can do for you, ask what you
+  can do for your country." (verifying mic→...→STT minus only the live-mic and
+  keyboard-injection legs).
+- `npm run tauri build -- --debug` — builds and bundles cleanly (msi + nsis), zero
+  warnings.
+- Launched `auralis-desktop.exe` directly: whisper model loaded successfully
+  (CPU, no GPU), global shortcut (Ctrl+Space) registered without error, no panics,
+  clean shutdown. No visible window appeared at launch, confirming the
+  no-focus-steal design.
+
+**Not yet verified — requires a human with a working microphone:**
+- Step 3: hold Ctrl+Space, speak, release, confirm text appears in Notepad.
+- Step 4: the spoken-correction flow ("Actually change X to Y").
+- Step 5: dictation accuracy with background noise.
+
+These three steps need to be run manually before Phase 1 is considered fully done;
+everything mechanically verifiable without a human voice has passed.
+
 ## Explicitly out of scope for this plan
 
 - Benchmark harness (separate follow-up plan, per the design doc)
