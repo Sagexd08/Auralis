@@ -106,21 +106,27 @@ and the phases after it have since extended it past that plan's original scope.
 - [x] Pipeline orchestration
 - [x] Tauri desktop app scaffold
 - [x] Global hotkey, pipeline wiring, keyboard injection
+- [x] Manual end-to-end verification (live mic, push-to-talk and continuous)
 
-**Shipped since Phase 1**
+**Phase 2 — measurement**
 
-- [x] Benchmark harness — WER/CER/RTF (Phase 2)
-- [x] Continuous / toggle dictation mode
-- [x] Tray icon, settings window, persisted config, model + mic pickers
-- [x] True in-place correction of already-inserted text
+- [x] WER/CER/RTF benchmark harness (`benchmarks/`) with a `auralis-bench-cli` runner
+
+**Phase 3 — dictation UX**
+
+- [x] Toggle/continuous dictation via VAD stream segmentation (Ctrl+Shift+Space)
+- [x] Tray icon, settings window, persisted config (hotkeys, model, mic device)
+- [x] In-place spoken correction — backspaces what Auralis typed and replaces it
 - [x] Text cleanup modes — `raw` / `clean` / `polished` / `developer`
 - [x] Audio quality analysis — SNR, speech ratio, clipping, RMS
 
-**Not done**
+**Phase 4 — shipping**
 
-- [ ] CUDA acceleration — deferred, no CUDA Toolkit available; the CPU build works
-- [ ] Manual end-to-end verification with a live microphone (see the plan doc's
-      Verification Results; everything verifiable without a human voice passes)
+- [x] GitHub Actions CI (runtime tests + Linux Tauri build)
+- [x] Brand assets (app icon, banner)
+- [x] STT accuracy pass (beam search, no_context, temperature fallback)
+- [ ] CUDA acceleration — deferred; no CUDA Toolkit available, the CPU build works
+- [ ] Signed Windows installer / release automation
 
 ## Building
 
