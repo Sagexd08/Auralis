@@ -45,15 +45,15 @@ Current progress:
 - [x] Workspace skeleton
 - [x] Resampling utility (rubato)
 - [x] Mic capture (cpal)
-- [ ] VAD-based silence trimming
-- [ ] RNNoise denoising
-- [ ] STT via whisper.cpp
-- [ ] Text cleanup rules
-- [ ] Pipeline orchestration
-- [ ] CUDA acceleration (optional — requires CUDA Toolkit)
-- [ ] Tauri desktop app scaffold
-- [ ] Global hotkey, pipeline wiring, keyboard injection
-- [ ] Manual end-to-end verification
+- [x] VAD-based silence trimming
+- [x] RNNoise denoising
+- [x] STT via whisper.cpp
+- [x] Text cleanup rules
+- [x] Pipeline orchestration
+- [ ] CUDA acceleration (deferred — no CUDA Toolkit on this machine; CPU build works)
+- [x] Tauri desktop app scaffold
+- [x] Global hotkey, pipeline wiring, keyboard injection
+- [ ] Manual end-to-end verification (needs a human with a mic — see plan doc)
 
 ## Building
 
