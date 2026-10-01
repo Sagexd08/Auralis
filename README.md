@@ -1,7 +1,16 @@
-# Auralis
+<p align="center">
+  <img src=".github/banner.png" alt="Auralis — real-time push-to-talk dictation" width="100%" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/Sagexd08/Auralis/actions/workflows/ci.yml">
+    <img src="https://github.com/Sagexd08/Auralis/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  </a>
+</p>
 
 Push-to-talk dictation for Windows. Hold **Ctrl+Space**, speak, release — cleaned-up
-transcribed text is inserted into whatever application currently has focus.
+transcribed text is inserted into whatever application currently has focus. Or tap
+**Ctrl+Shift+Space** for hands-free continuous dictation.
 
 Auralis runs entirely on-device: no cloud STT, no cloud LLM cleanup, no telemetry.
 
@@ -14,9 +23,24 @@ MIC → VAD → DENOISER → STT → TEXT CLEANUP → KEYBOARD INSERTION
 - **Mic capture** — [cpal](https://github.com/RustAudio/cpal), default input device
 - **VAD** — [webrtc-vad](https://github.com/valenzuela/webrtc-vad) trims leading/trailing silence
 - **Denoise** — RNNoise via [nnnoiseless](https://github.com/jneem/nnnoiseless) (pure Rust)
-- **STT** — [whisper.cpp](https://github.com/ggerganov/whisper.cpp) via [whisper-rs](https://github.com/tazz4843/whisper-rs), quantized `base.en` GGUF weights, optional CUDA acceleration
-- **Text cleanup** — local rules only: capitalization, terminal punctuation, and a simple spoken-correction heuristic ("actually, change X to Y")
-- **Insertion** — simulated keystrokes via [enigo](https://github.com/enigo-rs/enigo), with a clipboard fallback
+- **STT** — [whisper.cpp](https://github.com/ggerganov/whisper.cpp) via [whisper-rs](https://github.com/tazz4843/whisper-rs), quantized GGUF weights, beam search with temperature fallback, optional CUDA acceleration
+- **Text cleanup** — local rules only: capitalization, terminal punctuation, and a spoken-correction heuristic ("actually, change X to Y")
+- **Insertion** — simulated keystrokes via [enigo](https://github.com/enigo-rs/enigo), with a clipboard fallback. A spoken correction backspaces the text Auralis just typed and replaces it in place
+
+### Accuracy knobs
+
+The single biggest lever is model size. `base.en` (~59 MB) is the fast default;
+`small.en` (~190 MB) is noticeably better on proper nouns and accented speech at
+roughly 3x the decode cost:
+
+```powershell
+.\models\pull-model.ps1 small.en
+```
+
+Any downloaded model appears in the tray **Settings → Model** picker. Decoding
+uses beam search (width 5) with whisper.cpp's temperature-fallback thresholds and
+`no_context`, which together suppress the repetition loops that greedy decoding
+with cross-utterance context is prone to.
 
 This is the Phase 1 vertical slice described in
 [`docs/superpowers/specs/2026-10-01-phase1-vertical-slice-design.md`](docs/superpowers/specs/2026-10-01-phase1-vertical-slice-design.md):

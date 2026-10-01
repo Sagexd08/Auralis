@@ -16,8 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install native build deps (clang/cmake for whisper-rs-sys bindgen)
-        run: sudo apt-get update && sudo apt-get install -y libclang-dev cmake
+      - name: Install native build deps (bindgen + ALSA for cpal)
+        run: sudo apt-get update && sudo apt-get install -y libclang-dev cmake libasound2-dev
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -34,11 +34,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install native build deps (bindgen + Tauri/webkit2gtk)
+      - name: Install native build deps (bindgen + ALSA + Tauri/webkit2gtk)
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libclang-dev cmake \
+            libclang-dev cmake libasound2-dev \
             libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - uses: dtolnay/rust-toolchain@stable
