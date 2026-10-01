@@ -18,6 +18,9 @@ nnnoiseless = "0.5"
 whisper-rs = "0.13"
 regex = "1"
 once_cell = "1"
-
-[dev-dependencies]
 hound = "3.5"
+clap = { version = "4", features = ["derive"] }
+
+[[bin]]
+name = "auralis-bench-cli"
+path = "src/bin/bench_cli.rs"
