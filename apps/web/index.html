@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Auralis</title>
+<meta name="description" content="On-device push-to-talk dictation for Windows. Hold Ctrl+Space, speak, release — cleaned-up text lands in whatever app has focus. No cloud STT, no telemetry." />
+<style>
+  :root {
+    --bg: #0b0d10;
+    --bg-raised: #11151a;
+    --bg-sunken: #070909;
+    --border: #222a33;
+    --border-bright: #303d4a;
+    --text: #e7ecf1;
+    --text-dim: #9aa7b4;
+    --text-faint: #697684;
+    --accent: #5eead4;
+    --accent-dim: #2dd4bf;
+    --warn: #fbbf24;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    --maxw: 1080px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 16px; }
+
+  /* ---------- header ---------- */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(11, 13, 16, 0.85);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav { display: flex; align-items: center; gap: 24px; height: 56px; }
+  .brand {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .brand:hover { text-decoration: none; }
+  .brand .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+    flex: none;
+  }
+  .nav .links { display: flex; gap: 20px; margin-left: auto; font-size: 14px; }
+  .nav .links a { color: var(--text-dim); }
+  .nav .links a:hover { color: var(--text); text-decoration: none; }
+  @media (max-width: 680px) { .nav .links a.opt { display: none; } }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 72px 0 56px; border-bottom: 1px solid var(--border); }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-dim);
+    margin-bottom: 18px;
+  }
+  h1 {
+    font-size: clamp(32px, 6vw, 52px);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin: 0 0 20px;
+    font-weight: 650;
+  }
+  .lede { font-size: clamp(16px, 2.2vw, 19px); color: var(--text-dim); max-width: 60ch; margin: 0 0 14px; }
+  .lede strong { color: var(--text); font-weight: 600; }
+  .kbd {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--bg-raised);
+    border: 1px solid var(--border-bright);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 2px 7px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 550;
+    padding: 10px 18px; border-radius: 7px;
+    border: 1px solid var(--border-bright);
+    background: var(--bg-raised);
+    color: var(--text);
+  }
+  .btn:hover { border-color: var(--accent-dim); text-decoration: none; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #06231f; }
+  .btn.primary:hover { background: var(--accent-dim); }
+
+  /* ---------- pipeline ---------- */
+  .pipeline {
+    margin-top: 44px;
+    padding: 22px;
+    background: var(--bg-sunken);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow-x: auto;
+  }
+  .pipeline-row { display: flex; align-items: center; gap: 0; min-width: 640px; }
+  .stage {
+    flex: 1;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 11px 6px;
+    border: 1px solid var(--border-bright);
+    border-radius: 6px;
+    background: var(--bg-raised);
+    color: var(--text);
+  }
+  .stage span { display: block; color: var(--text-faint); font-size: 10px; letter-spacing: 0; margin-top: 3px; }
+  .arrow { color: var(--accent-dim); padding: 0 8px; font-size: 13px; flex: none; }
+  .pipeline-note { font-size: 13px; color: var(--text-faint); margin: 16px 0 0; }
+
+  /* ---------- sections ---------- */
+  section { padding: 56px 0; border-bottom: 1px solid var(--border); }
+  h2 {
+    font-size: 13px; font-family: var(--mono); font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--accent-dim); margin: 0 0 8px;
+  }
+  .section-lede { font-size: 22px; letter-spacing: -0.01em; margin: 0 0 28px; max-width: 54ch; font-weight: 550; }
+
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); }
+  .card {
+    padding: 18px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+  }
+  .card h3 { margin: 0 0 7px; font-size: 15px; font-weight: 600; }
+  .card p { margin: 0; font-size: 14px; color: var(--text-dim); }
+  .card code { font-family: var(--mono); font-size: 0.9em; color: var(--accent); }
+
+  /* ---------- table ---------- */
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 520px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-faint); font-weight: 600;
+  }
+  td code { font-family: var(--mono); color: var(--accent); font-size: 0.92em; }
+  td.y { color: var(--accent); }
+  td.n { color: var(--text-faint); }
+  .table-note { font-size: 13px; color: var(--text-faint); margin: 14px 0 0; }
+
+  /* ---------- status ---------- */
+  .phase { margin-bottom: 22px; }
+  .phase h3 {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
+    color: var(--text); margin: 0 0 9px; font-weight: 600;
+  }
+  ul.checks { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+  ul.checks li { padding: 3px 0 3px 25px; position: relative; color: var(--text-dim); }
+  ul.checks li::before {
+    position: absolute; left: 0; font-family: var(--mono); font-size: 12px;
+  }
+  ul.checks li.done::before { content: "✓"; color: var(--accent); }
+  ul.checks li.todo::before { content: "○"; color: var(--text-faint); }
+  ul.checks li.todo { color: var(--text-faint); }
+
+  /* ---------- code ---------- */
+  pre {
+    background: var(--bg-sunken);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.65;
+    margin: 0 0 14px;
+    color: var(--text);
+  }
+  pre .c { color: var(--text-faint); }
+  pre .k { color: var(--accent); }
+
+  .callout {
+    border-left: 2px solid var(--warn);
+    background: rgba(251, 191, 36, 0.05);
+    padding: 13px 16px;
+    border-radius: 0 7px 7px 0;
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+  }
+  .callout strong { color: var(--text); }
+
+  footer { padding: 36px 0 48px; font-size: 13px; color: var(--text-faint); }
+  footer a { color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top"><span class="dot"></span>AURALIS</a>
+    <nav class="links">
+      <a href="#how">How it works</a>
+      <a href="#modes" class="opt">Modes</a>
+      <a href="#status" class="opt">Status</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/Sagexd08/Auralis">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <div class="wrap hero">
+    <div class="eyebrow">Open speech stack · runs on your machine</div>
+    <h1>Speech infrastructure you can run anywhere.</h1>
+    <p class="lede">
+      Hold <span class="kbd">Ctrl</span>&nbsp;+&nbsp;<span class="kbd">Space</span>, speak, release —
+      cleaned-up transcribed text is inserted into whatever application currently has focus.
+      Or tap <span class="kbd">Ctrl</span>&nbsp;+&nbsp;<span class="kbd">Shift</span>&nbsp;+&nbsp;<span class="kbd">Space</span>
+      for hands-free continuous dictation.
+    </p>
+    <p class="lede">
+      <strong>Entirely on-device.</strong> No cloud speech-to-text, no cloud text cleanup, no telemetry.
+    </p>
+
+    <div class="cta">
+      <a class="btn primary" href="#install">Get started</a>
+      <a class="btn" href="https://github.com/Sagexd08/Auralis">View source</a>
+    </div>
+
+    <div class="pipeline" aria-label="Processing pipeline">
+      <div class="pipeline-row">
+        <div class="stage">MIC<span>cpal</span></div>
+        <div class="arrow">→</div>
+        <div class="stage">VAD<span>webrtc-vad</span></div>
+        <div class="arrow">→</div>
+        <div class="stage">DENOISE<span>RNNoise</span></div>
+        <div class="arrow">→</div>
+        <div class="stage">STT<span>whisper.cpp</span></div>
+        <div class="arrow">→</div>
+        <div class="stage">CLEANUP<span>local rules</span></div>
+        <div class="arrow">→</div>
+        <div class="stage">INSERT<span>keystrokes</span></div>
+      </div>
+      <p class="pipeline-note">
+        Every stage runs locally. Audio is processed and discarded — nothing is written to disk or sent anywhere.
+      </p>
+    </div>
+  </div>
+
+  <section id="how">
+    <div class="wrap">
+      <h2>How it works</h2>
+      <p class="section-lede">A reusable Rust pipeline, driven by a tray-only desktop shell.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>Capture &amp; resample</h3>
+          <p>Default input device via <code>cpal</code>, mixed to mono and resampled with a sinc interpolator to the rates each stage needs.</p>
+        </div>
+        <div class="card">
+          <h3>Voice activity detection</h3>
+          <p><code>webrtc-vad</code> trims leading and trailing silence, and segments continuous speech into utterances on a trailing-silence boundary.</p>
+        </div>
+        <div class="card">
+          <h3>Denoising</h3>
+          <p>RNNoise via <code>nnnoiseless</code> — pure Rust, no native dependency, operating on the same 10&nbsp;ms frames as the VAD.</p>
+        </div>
+        <div class="card">
+          <h3>Transcription</h3>
+          <p>whisper.cpp through <code>whisper-rs</code> on quantized GGUF weights. Beam search with temperature fallback, and <code>no_context</code> to suppress repetition loops.</p>
+        </div>
+        <div class="card">
+          <h3>Text intelligence</h3>
+          <p>Local rules only — capitalization, terminal punctuation, conservative disfluency removal, and a spoken-correction heuristic.</p>
+        </div>
+        <div class="card">
+          <h3>Insertion</h3>
+          <p>Simulated keystrokes via <code>enigo</code>, with a clipboard fallback. The app never takes focus, so keystrokes land where you were typing.</p>
+        </div>
+      </div>
+      <p class="pipeline-note">
+        The pipeline lives in <code style="font-family:var(--mono);color:var(--accent)">runtime/core</code> as a standalone library, independent of the
+        desktop shell — so it can be driven by a benchmark runner or another front end.
+      </p>
+    </div>
+  </section>
+
+  <section id="modes">
+    <div class="wrap">
+      <h2>Text cleanup modes</h2>
+      <p class="section-lede">How much the text layer is allowed to rewrite what you actually said.</p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Mode</th><th>Disfluencies removed</th><th>Capitalized</th><th>Terminal punctuation</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>raw</code></td><td class="n">no</td><td class="n">no</td><td class="n">no</td></tr>
+            <tr><td><code>clean</code> <span style="color:var(--text-faint)">(default)</span></td><td class="n">no</td><td class="y">yes</td><td class="y">yes</td></tr>
+            <tr><td><code>polished</code></td><td class="y">yes</td><td class="y">yes</td><td class="y">yes</td></tr>
+            <tr><td><code>developer</code></td><td class="y">yes</td><td class="n">no</td><td class="n">no</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-note">
+        <code style="font-family:var(--mono);color:var(--accent)">raw</code> is always available, so a transcript can be inspected with no rules in the way.
+        <code style="font-family:var(--mono);color:var(--accent)">developer</code> exists because dictating a shell command should not acquire a trailing period.
+        Disfluency matching is deliberately conservative — only tokens that are not also ordinary English words, so
+        “summary”, “ahead” and “error” survive while a standalone “um” does not.
+      </p>
+    </div>
+  </section>
+
+  <section id="status">
+    <div class="wrap">
+      <h2>Status</h2>
+      <p class="section-lede">What exists today, and what deliberately does not.</p>
+
+      <div class="phase">
+        <h3>Phase 1 — vertical slice</h3>
+        <ul class="checks">
+          <li class="done">Mic capture, resampling, VAD trimming, RNNoise denoising</li>
+          <li class="done">whisper.cpp transcription and local text cleanup</li>
+          <li class="done">Tauri desktop app, global hotkey, keystroke injection</li>
+          <li class="done">Manual end-to-end verification on a live microphone</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <h3>Phase 2 — measurement</h3>
+        <ul class="checks">
+          <li class="done">WER / CER / RTF benchmark harness with a CLI runner</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <h3>Phase 3 — dictation UX</h3>
+        <ul class="checks">
+          <li class="done">Continuous / toggle dictation via VAD stream segmentation</li>
+          <li class="done">Tray icon, settings window, persisted configuration</li>
+          <li class="done">In-place spoken correction of already-inserted text</li>
+          <li class="done">Text cleanup modes and audio quality analysis</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <h3>Phase 4 — shipping</h3>
+        <ul class="checks">
+          <li class="done">Continuous integration, brand assets, STT accuracy pass</li>
+          <li class="todo">CUDA acceleration — the CPU build works today</li>
+          <li class="todo">Signed Windows installer and release automation</li>
+        </ul>
+      </div>
+
+      <p class="callout">
+        <strong>No benchmark numbers are published yet.</strong> The harness exists and measures
+        WER, CER and real-time factor across model size, preprocessing variant and dataset — but
+        running it on a real corpus is still outstanding, so there is nothing honest to quote here.
+        Accuracy claims will arrive with the commands used to produce them.
+      </p>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <h2>Install</h2>
+      <p class="section-lede">Windows, built from source.</p>
+<pre><span class="c"># Clone and fetch a model</span>
+git clone https://github.com/Sagexd08/Auralis
+<span class="k">cd</span> Auralis
+powershell -File models/pull-model.ps1          <span class="c"># base.en  (~59 MB)</span>
+powershell -File models/pull-model.ps1 small.en <span class="c"># better accuracy, ~3x decode cost</span>
+
+<span class="c"># Rust library and tests</span>
+cargo test -p auralis-runtime
+
+<span class="c"># Desktop app</span>
+<span class="k">cd</span> apps/desktop
+npm install
+npm run tauri dev</pre>
+      <p class="table-note">
+        Requires Rust (stable, <code style="font-family:var(--mono);color:var(--accent)">x86_64-pc-windows-msvc</code>), Node.js, CMake, and a
+        <code style="font-family:var(--mono);color:var(--accent)">libclang</code> compatible with bindgen 0.69 — whisper.cpp is compiled from source.
+        A CUDA Toolkit is only needed for GPU acceleration. See the repository README for the
+        <code style="font-family:var(--mono);color:var(--accent)">libclang</code> version caveat.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    Auralis — open speech intelligence, built to run anywhere.
+    <a href="https://github.com/Sagexd08/Auralis">github.com/Sagexd08/Auralis</a>
+  </div>
+</footer>
+
+</body>
+</html>
