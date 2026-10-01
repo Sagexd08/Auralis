@@ -105,7 +105,7 @@ impl Pipeline {
                 continue;
             }
 
-            let batch: Vec<f32> = classify_native.drain(..).collect();
+            let batch: Vec<f32> = std::mem::take(&mut classify_native);
             pending_48k.extend(resample::resample(&batch, capture.sample_rate, 48_000));
 
             let mut boundary_hit = false;
