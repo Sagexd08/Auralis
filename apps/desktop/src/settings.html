@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Auralis Settings</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        background: #111;
+        color: #eee;
+        padding: 20px;
+        margin: 0;
+      }
+      h1 { font-size: 18px; margin: 0 0 16px; }
+      label { display: block; font-size: 14px; color: #c7c7c7; margin: 14px 0 4px; }
+      input, select {
+        width: 100%;
+        box-sizing: border-box;
+        background: #222;
+        color: #eee;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 7px 8px;
+        font-size: 14px;
+      }
+      .row { display: flex; gap: 8px; margin-top: 20px; }
+      button {
+        flex: 1;
+        padding: 9px;
+        border-radius: 4px;
+        border: 1px solid #555;
+        background: #2a2a2a;
+        color: #eee;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button.primary { background: #1a5fa8; border-color: #1a5fa8; color: #fff; }
+      button:hover { filter: brightness(1.15); }
+      #status { margin-top: 12px; font-size: 13px; min-height: 16px; }
+      #status.error { color: #ff8a8a; }
+      #status.ok { color: #8fde8f; }
+      .hint { font-size: 12px; color: #aeb4ba; margin-top: 2px; }
+    </style>
+  </head>
+  <body>
+    <h1>Auralis Settings</h1>
+
+    <label for="ptt">Push-to-talk hotkey</label>
+    <input id="ptt" type="text" placeholder="Ctrl+Space" />
+    <div class="hint">Hold to capture, release to transcribe.</div>
+
+    <label for="toggle">Toggle (continuous) hotkey</label>
+    <input id="toggle" type="text" placeholder="Ctrl+Shift+Space" />
+    <div class="hint">Tap once to start, tap again to stop.</div>
+
+    <label for="model">Model</label>
+    <select id="model"></select>
+
+    <label for="mic">Microphone</label>
+    <select id="mic"></select>
+
+    <div class="row">
+      <button id="cancel">Cancel</button>
+      <button id="save" class="primary">Save</button>
+    </div>
+    <div id="status"></div>
+
+    <script type="module">
+      import { invoke } from "@tauri-apps/api/core";
+      import { getCurrentWindow } from "@tauri-apps/api/window";
+
+      const ptt = document.getElementById("ptt");
+      const toggle = document.getElementById("toggle");
+      const model = document.getElementById("model");
+      const mic = document.getElementById("mic");
+      const status = document.getElementById("status");
+
+      function setStatus(text, kind) {
+        status.textContent = text;
+        status.className = kind || "";
+      }
+
+      function populateSelect(select, options, selected) {
+        select.innerHTML = "";
+        const defaultOpt = document.createElement("option");
+        defaultOpt.value = "";
+        defaultOpt.textContent = "(system default)";
+        if (select === mic) select.appendChild(defaultOpt);
+        for (const opt of options) {
+          const el = document.createElement("option");
+          el.value = opt;
+          el.textContent = opt;
+          select.appendChild(el);
+        }
+        select.value = selected && options.includes(selected) ? selected : (select === mic ? "" : options[0] || "");
+      }
+
+      async function load() {
+        try {
+          const [config, models, mics] = await Promise.all([
+            invoke("get_config"),
+            invoke("list_models"),
+            invoke("list_mic_devices"),
+          ]);
+          ptt.value = config.push_to_talk_hotkey;
+          toggle.value = config.toggle_hotkey;
+          populateSelect(model, models, config.model_file);
+          populateSelect(mic, mics, config.mic_device);
+        } catch (e) {
+          setStatus(`Failed to load settings: ${e}`, "error");
+        }
+      }
+
+      document.getElementById("save").addEventListener("click", async () => {
+        setStatus("Saving...", "");
+        try {
+          await invoke("save_config", {
+            newConfig: {
+              push_to_talk_hotkey: ptt.value.trim(),
+              toggle_hotkey: toggle.value.trim(),
+              model_file: model.value,
+              mic_device: mic.value || null,
+            },
+          });
+          setStatus("Saved.", "ok");
+        } catch (e) {
+          setStatus(String(e), "error");
+        }
+      });
+
+      document.getElementById("cancel").addEventListener("click", () => {
+        getCurrentWindow().close();
+      });
+
+      load();
+    </script>
+  </body>
+</html>
