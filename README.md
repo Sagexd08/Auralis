@@ -29,6 +29,7 @@ custom-trained model or the full distributed system described in the PRD
 ```
 runtime/core/         auralis-runtime — reusable Rust library (capture, VAD, denoise, STT, text cleanup, pipeline)
 apps/desktop/          Tauri 2 desktop app — tray-only, global hotkey, keystroke injection
+benchmarks/            Python WER/CER/RTF harness — does VAD+denoise actually help? (see benchmarks/README.md)
 models/                downloaded GGUF model weights (gitignored) + pull-model.ps1
 docs/superpowers/      design doc and implementation plan for this phase
 ```
@@ -74,9 +75,14 @@ npm install
 npm run tauri dev
 ```
 
+## Benchmark harness (Phase 2)
+
+Measures whether VAD+denoise actually helps STT accuracy rather than assuming
+it does — WER/CER/RTF across model size x raw/vad-denoise x clean/noisy. See
+[`benchmarks/README.md`](benchmarks/README.md).
+
 ## Out of scope for Phase 1
 
-- Benchmark harness (separate follow-up plan)
 - Toggle/continuous dictation modes — push-to-talk only
 - Tray icon UI polish, settings persistence, model-selection UI
 - macOS/Linux support
