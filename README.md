@@ -59,7 +59,20 @@ Current progress:
 ## Building
 
 Requires: Rust (stable, `x86_64-pc-windows-msvc`), Node.js + npm (for the Tauri
-frontend), and a CUDA Toolkit install if building with GPU acceleration.
+frontend), CMake, and a `libclang` compatible with `bindgen` 0.69 (needed to build
+`whisper-rs-sys`, which compiles whisper.cpp from source). A CUDA Toolkit is only
+needed for GPU acceleration.
+
+**`libclang` note:** a too-new LLVM/clang install (e.g. 20+) produces broken bindgen
+output for `whisper-rs-sys` — opaque structs with only an `_address` field, failing
+with dozens of `no field ... on type whisper_full_params` errors. If you hit that,
+install a compatible libclang and point `LIBCLANG_PATH` at it, e.g.:
+
+```powershell
+pip install --user libclang
+setx LIBCLANG_PATH "%APPDATA%\Python\Python313\site-packages\clang\native"
+# open a new terminal so the env var takes effect, then build
+```
 
 ```powershell
 # Rust library + tests
@@ -69,7 +82,7 @@ cargo test -p auralis-runtime
 # Download the whisper.cpp model
 powershell -File models/pull-model.ps1
 
-# Desktop app (once Task 10+ land)
+# Desktop app
 cd apps/desktop
 npm install
 npm run tauri dev
