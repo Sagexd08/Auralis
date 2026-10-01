@@ -20,7 +20,16 @@ impl SttEngine {
     pub fn transcribe(&self, samples_16k: &[f32]) -> Result<String> {
         let mut state = self.context.create_state().context("failed to create whisper state")?;
 
+        // whisper.cpp defaults to min(4, hardware_concurrency) threads when unset,
+        // which leaves most cores idle on anything beyond a 4-core machine. Use
+        // up to 8 (diminishing returns past that for whisper.cpp's ggml threading).
+        let n_threads = std::thread::available_parallelism()
+            .map(|n| n.get() as i32)
+            .unwrap_or(4)
+            .min(8);
+
         let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+        params.set_n_threads(n_threads);
         params.set_print_progress(false);
         params.set_print_special(false);
         params.set_print_realtime(false);
