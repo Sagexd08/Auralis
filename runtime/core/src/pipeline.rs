@@ -15,6 +15,21 @@ const TRAILING_SILENCE_MS: u32 = 700;
 const CLASSIFY_CHUNK_MS: u64 = 300;
 const VAD_FRAME_SAMPLES_48K: usize = 480;
 
+/// What a finalized utterance should do to the target application's text.
+/// Produced by [`Pipeline`] and consumed by an injection layer that knows how
+/// to insert or undo OS-level keystrokes (outside this crate's scope).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Transcript {
+    /// No speech was detected (silence, or VAD trimmed everything away).
+    Empty,
+    /// New dictation: insert as-is.
+    Fresh(String),
+    /// A spoken correction ("actually, change X to Y"): the caller should
+    /// undo whatever it inserted for the previous utterance and insert
+    /// `replacement` in its place, rather than appending after it.
+    Correction(String),
+}
+
 pub struct Pipeline {
     stt: SttEngine,
     last_transcript: Option<String>,
@@ -30,7 +45,7 @@ impl Pipeline {
 
     /// Runs one push-to-talk cycle: captures audio from `capture` while `is_held`
     /// returns true (polled every 20ms), then transcribes the whole held buffer.
-    pub fn run_once(&mut self, capture: &AudioCapture, mut is_held: impl FnMut() -> bool) -> Result<String> {
+    pub fn run_once(&mut self, capture: &AudioCapture, mut is_held: impl FnMut() -> bool) -> Result<Transcript> {
         let mut raw_samples: Vec<f32> = Vec::new();
         while is_held() {
             raw_samples.extend(capture.drain_available());
@@ -52,7 +67,7 @@ impl Pipeline {
         &mut self,
         capture: &AudioCapture,
         mut should_continue: impl FnMut() -> bool,
-        mut on_utterance: impl FnMut(Result<String>),
+        mut on_utterance: impl FnMut(Result<Transcript>),
     ) {
         let mut segmenter = vad::StreamSegmenter::new(TRAILING_SILENCE_MS);
         let mut utterance_buf: Vec<f32> = Vec::new();
@@ -107,7 +122,7 @@ impl Pipeline {
 
     /// Resample -> VAD trim -> denoise -> resample -> STT -> text cleanup,
     /// shared by both push-to-talk and continuous mode.
-    fn process_utterance(&mut self, raw_samples: &[f32], native_rate: u32) -> Result<String> {
+    fn process_utterance(&mut self, raw_samples: &[f32], native_rate: u32) -> Result<Transcript> {
         debug!(
             "captured {} samples @ {}Hz ({:.2}s)",
             raw_samples.len(),
@@ -116,7 +131,7 @@ impl Pipeline {
         );
 
         if raw_samples.is_empty() {
-            return Ok(String::new());
+            return Ok(Transcript::Empty);
         }
 
         let at_48k = resample::resample(raw_samples, native_rate, 48_000);
@@ -126,7 +141,7 @@ impl Pipeline {
         debug!("after VAD trim: {} samples ({:.2}s)", trimmed.len(), trimmed.len() as f32 / 48_000.0);
         if trimmed.is_empty() {
             debug!("VAD trimmed everything to silence — no speech detected, aborting");
-            return Ok(String::new());
+            return Ok(Transcript::Empty);
         }
         let denoised = denoise::denoise_48k(&trimmed);
         debug!("after denoise: {} samples", denoised.len());
@@ -139,21 +154,29 @@ impl Pipeline {
         debug!("STT took {:.2}s, raw output: {raw_text:?}", stt_start.elapsed().as_secs_f32());
 
         let cleaned = text::clean_transcript(&raw_text);
-
         if cleaned.is_empty() {
-            return Ok(String::new());
+            return Ok(Transcript::Empty);
         }
 
-        let output = match &self.last_transcript {
-            Some(prev) => match text::detect_correction(prev, &cleaned) {
-                Some(revised) => revised,
-                None => cleaned,
-            },
-            None => cleaned,
+        Ok(Self::classify_output(&mut self.last_transcript, cleaned))
+    }
+
+    /// Pure decision logic, factored out of `process_utterance` so it's
+    /// testable without a loaded STT model: decides whether `cleaned` is a
+    /// spoken correction of `prev` or fresh dictation, and advances `prev` to
+    /// match what the caller will end up with in the target application.
+    fn classify_output(prev: &mut Option<String>, cleaned: String) -> Transcript {
+        let transcript = match prev.as_deref().and_then(|p| text::detect_correction(p, &cleaned)) {
+            Some(revised) => Transcript::Correction(revised),
+            None => Transcript::Fresh(cleaned),
         };
 
-        self.last_transcript = Some(output.clone());
-        Ok(output)
+        *prev = Some(match &transcript {
+            Transcript::Fresh(t) | Transcript::Correction(t) => t.clone(),
+            Transcript::Empty => unreachable!("cleaned was checked non-empty above"),
+        });
+
+        transcript
     }
 }
 
@@ -167,5 +190,39 @@ mod tests {
             let len = (sample_rate as u64 * CLASSIFY_CHUNK_MS / 1000) as usize;
             assert!(len > 0, "classify chunk length must be non-zero at {sample_rate}Hz");
         }
+    }
+
+    #[test]
+    fn classify_output_first_utterance_is_always_fresh() {
+        let mut prev = None;
+        let out = Pipeline::classify_output(&mut prev, "Send the report to Rahul tomorrow.".to_string());
+        assert_eq!(out, Transcript::Fresh("Send the report to Rahul tomorrow.".to_string()));
+        assert_eq!(prev.as_deref(), Some("Send the report to Rahul tomorrow."));
+    }
+
+    #[test]
+    fn classify_output_detects_correction_against_previous() {
+        let mut prev = Some("Send the report to Rahul tomorrow.".to_string());
+        let out = Pipeline::classify_output(&mut prev, "Actually, change Rahul to Rohan.".to_string());
+        assert_eq!(out, Transcript::Correction("Send the report to Rohan tomorrow.".to_string()));
+        // `prev` advances to the corrected sentence so a second correction chains onto it.
+        assert_eq!(prev.as_deref(), Some("Send the report to Rohan tomorrow."));
+    }
+
+    #[test]
+    fn classify_output_non_correction_is_fresh_and_replaces_prev() {
+        let mut prev = Some("Send the report to Rahul tomorrow.".to_string());
+        let out = Pipeline::classify_output(&mut prev, "Also cc the design team.".to_string());
+        assert_eq!(out, Transcript::Fresh("Also cc the design team.".to_string()));
+        assert_eq!(prev.as_deref(), Some("Also cc the design team."));
+    }
+
+    #[test]
+    fn classify_output_chains_two_corrections() {
+        let mut prev = Some("Send the report to Rahul tomorrow.".to_string());
+        let first = Pipeline::classify_output(&mut prev, "change Rahul to Rohan".to_string());
+        assert_eq!(first, Transcript::Correction("Send the report to Rohan tomorrow.".to_string()));
+        let second = Pipeline::classify_output(&mut prev, "change tomorrow to Friday".to_string());
+        assert_eq!(second, Transcript::Correction("Send the report to Rohan Friday.".to_string()));
     }
 }

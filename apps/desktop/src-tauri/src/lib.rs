@@ -3,7 +3,7 @@ mod hotkey;
 mod inject;
 
 use auralis_runtime::audio::AudioCapture;
-use auralis_runtime::pipeline::Pipeline;
+use auralis_runtime::pipeline::{Pipeline, Transcript};
 use config::AppConfig;
 use log::{error, info, warn};
 use std::path::PathBuf;
@@ -22,38 +22,93 @@ struct AppState {
     pipeline: Arc<Mutex<Option<Pipeline>>>,
     held: Arc<AtomicBool>,
     continuous_active: Arc<AtomicBool>,
+    /// Character count of the text this app most recently typed via
+    /// keystroke injection, or `None` if nothing was typed (clipboard
+    /// fallback, injection error, or nothing inserted yet). Lets a spoken
+    /// correction backspace exactly what it typed and retype in place,
+    /// instead of appending the corrected sentence after it.
+    last_inserted_chars: Arc<Mutex<Option<usize>>>,
 }
 
 fn models_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../models")
 }
 
-/// Emits a transcript event and inserts it via keystroke injection (falling
-/// back to clipboard), updating the status event either way. Shared by
-/// push-to-talk and continuous mode so both report status identically.
-fn handle_transcript_result(handle: &AppHandle, result: anyhow::Result<String>) {
+/// Emits a transcript event and applies it (inserting fresh text, or
+/// replacing the previously-inserted text in place for a spoken correction),
+/// updating the status event either way. Shared by push-to-talk and
+/// continuous mode so both report status identically.
+fn handle_transcript_result(handle: &AppHandle, last_inserted: &Mutex<Option<usize>>, result: anyhow::Result<Transcript>) {
     match result {
-        Ok(text) if !text.is_empty() => {
+        Ok(Transcript::Fresh(text)) => {
+            // Separate consecutive utterances (e.g. in continuous mode) with
+            // a space so words don't run together; skip it for the very
+            // first insertion or after a clipboard fallback left nothing typed.
+            let text = if last_inserted.lock().unwrap().is_some() {
+                format!(" {text}")
+            } else {
+                text
+            };
             let _ = handle.emit("auralis://transcript", &text);
-            match crate::inject::insert_text(&text) {
-                Ok(true) => {
-                    let _ = handle.emit("auralis://status", "Idle");
-                }
-                Ok(false) => {
-                    let _ = handle.emit("auralis://status", "Idle (copied to clipboard)");
-                }
-                Err(e) => {
-                    error!("keystroke injection failed: {e}");
-                    let _ = handle.emit("auralis://status", format!("Injection error: {e}"));
+            apply_insert(handle, last_inserted, &text);
+        }
+        Ok(Transcript::Correction(replacement)) => {
+            let _ = handle.emit("auralis://transcript", &replacement);
+            match last_inserted.lock().unwrap().take() {
+                Some(undo_chars) => apply_replace(handle, last_inserted, undo_chars, &replacement),
+                None => {
+                    warn!("correction detected but nothing was tracked as typed; inserting fresh instead");
+                    apply_insert(handle, last_inserted, &replacement);
                 }
             }
         }
-        Ok(_) => {
+        Ok(Transcript::Empty) => {
             let _ = handle.emit("auralis://status", "Idle (no speech detected)");
         }
         Err(e) => {
             error!("transcription failed: {e}");
             let _ = handle.emit("auralis://status", format!("Transcription failed: {e}"));
+        }
+    }
+}
+
+/// Types `text` via keystroke injection (or copies to clipboard on failure)
+/// and records how many characters landed, so a later correction can undo
+/// exactly that much.
+fn apply_insert(handle: &AppHandle, last_inserted: &Mutex<Option<usize>>, text: &str) {
+    match crate::inject::insert_text(text) {
+        Ok(true) => {
+            *last_inserted.lock().unwrap() = Some(text.chars().count());
+            let _ = handle.emit("auralis://status", "Idle");
+        }
+        Ok(false) => {
+            *last_inserted.lock().unwrap() = None;
+            let _ = handle.emit("auralis://status", "Idle (copied to clipboard)");
+        }
+        Err(e) => {
+            error!("keystroke injection failed: {e}");
+            *last_inserted.lock().unwrap() = None;
+            let _ = handle.emit("auralis://status", format!("Injection error: {e}"));
+        }
+    }
+}
+
+/// Backspaces `undo_chars` characters and types `replacement` in their
+/// place (or copies to clipboard on failure), updating the tracked count.
+fn apply_replace(handle: &AppHandle, last_inserted: &Mutex<Option<usize>>, undo_chars: usize, replacement: &str) {
+    match crate::inject::replace_text(undo_chars, replacement) {
+        Ok(true) => {
+            *last_inserted.lock().unwrap() = Some(replacement.chars().count());
+            let _ = handle.emit("auralis://status", "Idle (corrected)");
+        }
+        Ok(false) => {
+            *last_inserted.lock().unwrap() = None;
+            let _ = handle.emit("auralis://status", "Idle (correction copied to clipboard)");
+        }
+        Err(e) => {
+            error!("keystroke correction failed: {e}");
+            *last_inserted.lock().unwrap() = None;
+            let _ = handle.emit("auralis://status", format!("Injection error: {e}"));
         }
     }
 }
@@ -66,6 +121,7 @@ fn handle_push_to_talk_event(app: &AppHandle, state: &AppState, event: tauri_plu
 
             let held = state.held.clone();
             let pipeline = state.pipeline.clone();
+            let last_inserted = state.last_inserted_chars.clone();
             let mic_device = state.config.lock().unwrap().mic_device.clone();
             let handle = app.clone();
 
@@ -89,7 +145,7 @@ fn handle_push_to_talk_event(app: &AppHandle, state: &AppState, event: tauri_plu
                     return;
                 };
                 let result = pipeline.run_once(&capture, || held.load(Ordering::SeqCst));
-                handle_transcript_result(&handle, result);
+                handle_transcript_result(&handle, &last_inserted, result);
             });
         }
         ShortcutState::Released => {
@@ -119,6 +175,7 @@ fn handle_toggle_event(app: &AppHandle, state: &AppState, event: tauri_plugin_gl
 
     let continuous_active = state.continuous_active.clone();
     let pipeline = state.pipeline.clone();
+    let last_inserted = state.last_inserted_chars.clone();
     let mic_device = state.config.lock().unwrap().mic_device.clone();
     let handle = app.clone();
 
@@ -143,7 +200,7 @@ fn handle_toggle_event(app: &AppHandle, state: &AppState, event: tauri_plugin_gl
         pipeline.run_continuous(
             &capture,
             || continuous_active.load(Ordering::SeqCst),
-            |result| handle_transcript_result(&handle, result),
+            |result| handle_transcript_result(&handle, &last_inserted, result),
         );
 
         info!("continuous mode stopped");
@@ -278,6 +335,7 @@ pub fn run() {
                 pipeline: Arc::new(Mutex::new(pipeline)),
                 held: Arc::new(AtomicBool::new(false)),
                 continuous_active: Arc::new(AtomicBool::new(false)),
+                last_inserted_chars: Arc::new(Mutex::new(None)),
             });
 
             register_hotkeys(app.handle())?;
