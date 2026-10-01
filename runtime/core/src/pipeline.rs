@@ -1,5 +1,5 @@
 use crate::{audio::AudioCapture, denoise, quality, resample, stt::SttEngine, text, vad};
-use crate::text::CleanupMode;
+use crate::text::{CleanupMode, CleanupModeHandle};
 use anyhow::Result;
 use log::{debug, warn};
 use std::path::Path;
@@ -34,15 +34,19 @@ pub enum Transcript {
 pub struct Pipeline {
     stt: SttEngine,
     last_transcript: Option<String>,
-    cleanup_mode: CleanupMode,
+    cleanup_mode: CleanupModeHandle,
 }
 
 impl Pipeline {
     pub fn new(model_path: &Path) -> Result<Self> {
-        Self::with_cleanup_mode(model_path, CleanupMode::default())
+        Self::with_cleanup_mode(model_path, CleanupModeHandle::default())
     }
 
-    pub fn with_cleanup_mode(model_path: &Path, cleanup_mode: CleanupMode) -> Result<Self> {
+    /// Builds a pipeline that reads its cleanup mode from `cleanup_mode` on
+    /// every utterance, so callers can change it at any time — including while
+    /// a continuous-dictation session is running — by writing to their own
+    /// clone of the handle.
+    pub fn with_cleanup_mode(model_path: &Path, cleanup_mode: CleanupModeHandle) -> Result<Self> {
         Ok(Self {
             stt: SttEngine::load(model_path)?,
             last_transcript: None,
@@ -51,13 +55,7 @@ impl Pipeline {
     }
 
     pub fn cleanup_mode(&self) -> CleanupMode {
-        self.cleanup_mode
-    }
-
-    /// Changes how much the text layer rewrites subsequent transcripts. Cheap
-    /// enough to call on every settings save — no model reload involved.
-    pub fn set_cleanup_mode(&mut self, mode: CleanupMode) {
-        self.cleanup_mode = mode;
+        self.cleanup_mode.get()
     }
 
     /// Runs one push-to-talk cycle: captures audio from `capture` while `is_held`
@@ -179,7 +177,7 @@ impl Pipeline {
         let raw_text = self.stt.transcribe(&at_16k)?;
         debug!("STT took {:.2}s, raw output: {raw_text:?}", stt_start.elapsed().as_secs_f32());
 
-        let cleaned = text::clean_transcript_with(&raw_text, self.cleanup_mode);
+        let cleaned = text::clean_transcript_with(&raw_text, self.cleanup_mode.get());
         if cleaned.is_empty() {
             return Ok(Transcript::Empty);
         }

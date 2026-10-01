@@ -38,6 +38,25 @@ with a model present in `models/`: WER, CER (via `jiwer`), and RTF
 - `datasets/prepare_noisy.py` — mixes a clean dataset with procedurally generated noise at a target SNR (no external noise corpus needed)
 - `datasets/fixtures/` — bundled 1-clip smoke-test set, no download required
 - `runners/run_variant.py` — runs `auralis-bench-cli` across a dataset for one model/preprocessing variant
+
+### Inspecting audio quality
+
+`auralis-bench-cli --quality` reports the measured input characteristics (SNR
+in dB, the fraction of frames the VAD called speech, RMS level, and whether the
+input clipped) on **stderr**, leaving stdout as exactly one line of transcript
+so the harness keeps parsing it unchanged:
+
+```bash
+cargo run -p auralis-runtime --bin auralis-bench-cli -- \
+  --model models/ggml-base.en-q5_1.bin \
+  --input benchmarks/datasets/fixtures/clip1.wav \
+  --preprocess vad-denoise --quality
+```
+
+Useful for checking that a synthetically noised dataset actually landed at the
+SNR it was generated for. Note that the transcript on stdout is the raw model
+output — WER is scored against normalized reference text, so the desktop app's
+text cleanup is deliberately not applied here.
 - `metrics/wer.py` — WER/CER/RTF computation
 - `run_all.py` — single reproducible entrypoint
 - `tests/test_harness_smoke.py` — exercises the real pipeline against the bundled fixture; skips (not fails) if the model/binary aren't built yet

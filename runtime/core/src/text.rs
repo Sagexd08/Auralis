@@ -1,5 +1,6 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::{Arc, Mutex};
 
 /// How much the text layer is allowed to rewrite what was actually said.
 ///
@@ -49,6 +50,36 @@ impl CleanupMode {
     /// Every mode, in the order the settings UI should list them.
     pub fn all() -> [Self; 4] {
         [Self::Raw, Self::Clean, Self::Polished, Self::Developer]
+    }
+}
+
+/// A cleanup-mode setting shared between the pipeline that reads it and
+/// whatever changes it.
+///
+/// The desktop app holds the pipeline behind a mutex that continuous dictation
+/// keeps locked for a whole session, so changing the mode through the pipeline
+/// itself would make a settings save block until dictation stopped. This is
+/// locked only for the instant it takes to read or write the mode.
+#[derive(Debug, Clone)]
+pub struct CleanupModeHandle(Arc<Mutex<CleanupMode>>);
+
+impl CleanupModeHandle {
+    pub fn new(mode: CleanupMode) -> Self {
+        Self(Arc::new(Mutex::new(mode)))
+    }
+
+    pub fn get(&self) -> CleanupMode {
+        *self.0.lock().expect("cleanup mode mutex poisoned")
+    }
+
+    pub fn set(&self, mode: CleanupMode) {
+        *self.0.lock().expect("cleanup mode mutex poisoned") = mode;
+    }
+}
+
+impl Default for CleanupModeHandle {
+    fn default() -> Self {
+        Self::new(CleanupMode::default())
     }
 }
 
@@ -237,6 +268,20 @@ mod tests {
         }
         assert_eq!(CleanupMode::parse("DEV"), Some(CleanupMode::Developer));
         assert_eq!(CleanupMode::parse("nonsense"), None);
+    }
+
+    #[test]
+    fn handle_shares_mode_between_clones() {
+        let a = CleanupModeHandle::new(CleanupMode::Clean);
+        let b = a.clone();
+        assert_eq!(b.get(), CleanupMode::Clean);
+        b.set(CleanupMode::Developer);
+        assert_eq!(a.get(), CleanupMode::Developer, "clones must see each other's writes");
+    }
+
+    #[test]
+    fn handle_defaults_to_clean() {
+        assert_eq!(CleanupModeHandle::default().get(), CleanupMode::Clean);
     }
 
     #[test]

@@ -59,6 +59,10 @@
     <label for="mic">Microphone</label>
     <select id="mic"></select>
 
+    <label for="cleanup">Text cleanup</label>
+    <select id="cleanup"></select>
+    <div class="hint" id="cleanup-hint"></div>
+
     <div class="row">
       <button id="cancel">Cancel</button>
       <button id="save" class="primary">Save</button>
@@ -73,7 +77,20 @@
       const toggle = document.getElementById("toggle");
       const model = document.getElementById("model");
       const mic = document.getElementById("mic");
+      const cleanup = document.getElementById("cleanup");
+      const cleanupHint = document.getElementById("cleanup-hint");
       const status = document.getElementById("status");
+
+      const CLEANUP_HINTS = {
+        raw: "Exactly what the model heard \u2014 no casing or punctuation added.",
+        clean: "Capitalization and a terminal punctuation mark.",
+        polished: "Clean, plus removes \u201Cuh\u201D / \u201Cum\u201D disfluencies.",
+        developer: "Removes disfluencies but adds no capital and no trailing period.",
+      };
+
+      function updateCleanupHint() {
+        cleanupHint.textContent = CLEANUP_HINTS[cleanup.value] || "";
+      }
 
       function setStatus(text, kind) {
         status.textContent = text;
@@ -97,15 +114,18 @@
 
       async function load() {
         try {
-          const [config, models, mics] = await Promise.all([
+          const [config, models, mics, cleanupModes] = await Promise.all([
             invoke("get_config"),
             invoke("list_models"),
             invoke("list_mic_devices"),
+            invoke("list_cleanup_modes"),
           ]);
           ptt.value = config.push_to_talk_hotkey;
           toggle.value = config.toggle_hotkey;
           populateSelect(model, models, config.model_file);
           populateSelect(mic, mics, config.mic_device);
+          populateSelect(cleanup, cleanupModes, config.cleanup_mode);
+          updateCleanupHint();
         } catch (e) {
           setStatus(`Failed to load settings: ${e}`, "error");
         }
@@ -120,6 +140,7 @@
               toggle_hotkey: toggle.value.trim(),
               model_file: model.value,
               mic_device: mic.value || null,
+              cleanup_mode: cleanup.value,
             },
           });
           setStatus("Saved.", "ok");
@@ -127,6 +148,8 @@
           setStatus(String(e), "error");
         }
       });
+
+      cleanup.addEventListener("change", updateCleanupHint);
 
       document.getElementById("cancel").addEventListener("click", () => {
         getCurrentWindow().close();
