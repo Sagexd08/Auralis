@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Auralis</title>
+    <style>
+      body { font-family: system-ui, sans-serif; background: #111; color: #eee; padding: 16px; }
+      #status { font-size: 20px; font-weight: 600; }
+      #transcript { margin-top: 12px; color: #aaa; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <div id="status">Idle</div>
+    <div id="transcript"></div>
+    <script type="module">
+      import { listen } from "@tauri-apps/api/event";
+
+      listen("auralis://status", (event) => {
+        document.getElementById("status").textContent = event.payload;
+      });
+      listen("auralis://transcript", (event) => {
+        document.getElementById("transcript").textContent = event.payload;
+      });
+    </script>
+  </body>
+</html>

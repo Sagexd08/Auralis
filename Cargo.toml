@@ -2,6 +2,5 @@
 resolver = "2"
 members = [
     "runtime/core",
-    # "apps/desktop/src-tauri" is added back in Task 10 once that crate is scaffolded —
-    # cargo refuses to resolve a workspace member whose Cargo.toml doesn't exist yet.
+    "apps/desktop/src-tauri",
 ]
