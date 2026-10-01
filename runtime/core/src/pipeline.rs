@@ -152,9 +152,6 @@ impl Pipeline {
         let at_48k = resample::resample(raw_samples, native_rate, 48_000);
         debug!("resampled to 48k: {} samples ({:.2}s)", at_48k.len(), at_48k.len() as f32 / 48_000.0);
 
-        // Measured before VAD trimming and denoising, so the numbers describe
-        // what the microphone actually delivered rather than what the pipeline
-        // made of it.
         let input_quality = quality::analyze_48k(&at_48k);
         debug!("input audio quality: {}", input_quality.summary());
         if input_quality.clipping {
@@ -229,7 +226,6 @@ mod tests {
         let mut prev = Some("Send the report to Rahul tomorrow.".to_string());
         let out = Pipeline::classify_output(&mut prev, "Actually, change Rahul to Rohan.".to_string());
         assert_eq!(out, Transcript::Correction("Send the report to Rohan tomorrow.".to_string()));
-        // `prev` advances to the corrected sentence so a second correction chains onto it.
         assert_eq!(prev.as_deref(), Some("Send the report to Rohan tomorrow."));
     }
 

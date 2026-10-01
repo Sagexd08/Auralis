@@ -120,7 +120,7 @@ mod tests {
 
     fn tone(num_frames: usize) -> Vec<f32> {
         let sr = 48_000.0f32;
-        let freq = 220.0f32; // well within speech-band energy the VAD will flag
+        let freq = 220.0f32;
         (0..(num_frames * FRAME_SAMPLES))
             .map(|i| 0.6 * (2.0 * std::f32::consts::PI * freq * i as f32 / sr).sin())
             .collect()
@@ -134,14 +134,6 @@ mod tests {
 
     #[test]
     fn trims_leading_and_trailing_silence() {
-        // webrtc-vad has built-in hangover: after a speech segment ends, it keeps
-        // flagging a handful of subsequent frames as "speech" for a few frames
-        // (~8 frames / 80ms observed empirically) before its internal state
-        // settles back to silence. The leading/trailing silence blocks here are
-        // sized well beyond that hangover window so the trimmed result still
-        // demonstrates genuine trimming on both ends, and the tolerance below
-        // accounts for the hangover rather than assuming an exact cut at the
-        // tone boundary.
         const HANGOVER_FRAMES: usize = 12;
         let mut input = silence(20);
         input.extend(tone(10));
@@ -150,12 +142,8 @@ mod tests {
         let trimmed = trim_silence(&input);
 
         assert!(!trimmed.is_empty());
-        // Must retain all real speech.
         assert!(trimmed.len() >= tone(10).len());
-        // Must not retain more than the speech plus a bounded hangover margin.
         assert!(trimmed.len() <= tone(10).len() + HANGOVER_FRAMES * FRAME_SAMPLES);
-        // Must be meaningfully shorter than the untrimmed input (i.e. trimming
-        // actually happened on both ends).
         assert!(trimmed.len() < input.len());
     }
 
@@ -179,7 +167,6 @@ mod tests {
     #[test]
     fn segmenter_fires_once_after_speech_then_enough_trailing_silence() {
         let mut segmenter = StreamSegmenter::new(700);
-        // 700ms trailing silence threshold = 70 frames.
         let mut stream = tone(10);
         stream.extend(silence(80));
 
@@ -189,9 +176,8 @@ mod tests {
     #[test]
     fn segmenter_does_not_fire_on_short_pause_mid_speech() {
         let mut segmenter = StreamSegmenter::new(700);
-        // A short (<700ms) pause between two spoken words shouldn't split the utterance.
         let mut stream = tone(10);
-        stream.extend(silence(20)); // 200ms pause
+        stream.extend(silence(20));
         stream.extend(tone(10));
 
         assert_eq!(feed_frames(&mut segmenter, &stream), 0);
@@ -201,9 +187,9 @@ mod tests {
     fn segmenter_detects_two_separate_utterances() {
         let mut segmenter = StreamSegmenter::new(700);
         let mut stream = tone(10);
-        stream.extend(silence(80)); // boundary 1
+        stream.extend(silence(80));
         stream.extend(tone(10));
-        stream.extend(silence(80)); // boundary 2
+        stream.extend(silence(80));
 
         assert_eq!(feed_frames(&mut segmenter, &stream), 2);
     }

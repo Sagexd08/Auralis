@@ -89,8 +89,6 @@ pub fn analyze_48k(samples: &[f32]) -> AudioQuality {
         flags.iter().filter(|&&f| f).count() as f32 / flags.len() as f32
     };
 
-    // Needs both halves to form a ratio, and a noise floor that isn't exactly
-    // zero (digital silence would make this divide by zero and report +inf).
     let snr_db = if speech_samples == 0 || noise_samples == 0 {
         None
     } else {
@@ -128,7 +126,6 @@ mod tests {
     }
 
     fn noise(num_frames: usize, amplitude: f32) -> Vec<f32> {
-        // Deterministic pseudo-noise: a cheap LCG, so the test can't flake.
         let mut state = 0x2545_F491_4F6C_DD1Du64;
         (0..(num_frames * FRAME_SAMPLES))
             .map(|_| {
@@ -180,7 +177,7 @@ mod tests {
     #[test]
     fn speech_over_silence_yields_a_positive_snr() {
         let mut samples = silence(20);
-        samples.extend(noise(20, 0.0005)); // a non-zero noise floor to divide by
+        samples.extend(noise(20, 0.0005));
         let mid = samples.len();
         samples.extend(tone(20, 0.6));
         assert!(mid > 0);

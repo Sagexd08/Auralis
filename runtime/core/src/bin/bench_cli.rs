@@ -90,9 +90,6 @@ fn main() -> Result<()> {
     };
 
     let engine = SttEngine::load(&args.model)?;
-    // Intentionally the raw model output: the harness scores this against
-    // normalized reference text, so running the desktop app's text cleanup
-    // here would measure the cleanup rules rather than the model.
     let transcript = engine.transcribe(&samples_16k)?;
 
     println!("{transcript}");

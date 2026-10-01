@@ -123,8 +123,6 @@ pub fn clean_transcript_with(raw: &str, mode: CleanupMode) -> String {
         result = FILLER_PATTERN.replace_all(&result, "").to_string();
         result = DOUBLED_COMMA.replace_all(&result, ",").to_string();
         result = SPACE_BEFORE_PUNCT.replace_all(&result, "$1").to_string();
-        // Removing a leading filler can leave the sentence starting on its
-        // punctuation, e.g. "Um, hello" -> ", hello".
         result = result.trim_start_matches([',', ' ']).to_string();
     }
 
@@ -201,8 +199,6 @@ mod tests {
 
     #[test]
     fn clean_mode_keeps_fillers() {
-        // Only Polished/Developer strip disfluencies — Clean is a formatting
-        // pass, not an editorial one.
         assert_eq!(clean_transcript_with("uh, hello there", CleanupMode::Clean), "Uh, hello there.");
     }
 
@@ -232,8 +228,6 @@ mod tests {
 
     #[test]
     fn polished_mode_leaves_ordinary_words_that_look_like_fillers_alone() {
-        // "summary" contains "um", "ahead" starts with "ah" and "error" starts
-        // with "er" — none is a standalone filler token, so all must survive.
         assert_eq!(
             clean_transcript_with("summary of the error ahead", CleanupMode::Polished),
             "Summary of the error ahead."

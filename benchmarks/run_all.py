@@ -23,19 +23,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-# NOTE: don't import anything from the local `datasets/` package at module
-# scope here — once benchmarks/ is on sys.path, a bare `import datasets`
-# anywhere in this process would resolve to that local directory instead of
-# the pip-installed Hugging Face `datasets` library. prepare_noisy.py is
-# invoked as a subprocess below specifically to avoid that collision.
 from metrics.wer import compute_metrics
 from runners.run_variant import run_variant
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BENCH_DIR = Path(__file__).resolve().parent
 
-# model_name -> path relative to repo root. Sizes not present on disk are
-# skipped with a note rather than failing the whole run.
 MODELS = {
     "tiny.en": REPO_ROOT / "models" / "ggml-tiny.en-q5_1.bin",
     "base.en": REPO_ROOT / "models" / "ggml-base.en-q5_1.bin",

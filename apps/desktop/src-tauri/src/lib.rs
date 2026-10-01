@@ -221,8 +221,6 @@ fn handle_toggle_event(app: &AppHandle, state: &AppState, event: tauri_plugin_gl
     let now_active = !was_active;
 
     if !now_active {
-        // Flag flip alone stops the running thread's loop (it polls this
-        // same flag); nothing else to do here.
         return;
     }
 
@@ -352,8 +350,6 @@ fn save_config(app: AppHandle, state: tauri::State<AppState>, new_config: AppCon
 
     new_config.save(&state.config_dir).map_err(|e| e.to_string())?;
 
-    // Takes effect on the next utterance, including mid-session, and needs
-    // neither a model reload nor the pipeline lock.
     state.cleanup_mode.set(cleanup_mode);
 
     if model_changed {
@@ -376,8 +372,6 @@ fn save_config(app: AppHandle, state: tauri::State<AppState>, new_config: AppCon
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // RUST_LOG=auralis_runtime=debug,auralis_desktop_lib=debug for verbose
-    // per-stage pipeline tracing; defaults to warnings/errors only.
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
 
     tauri::Builder::default()
@@ -391,10 +385,6 @@ pub fn run() {
             if !model_path.exists() {
                 warn!("Model not found at {model_path:?}. Run models/pull-model.ps1 first.");
             }
-            // A missing/corrupt model shouldn't crash this tray-only app with no
-            // visible window and no explanation — load it lazily and report a
-            // clear status if a hotkey is pressed before it's available, instead
-            // of panicking the whole process in setup().
             let cleanup_mode = CleanupModeHandle::new(config.cleanup_mode());
             let pipeline = Pipeline::with_cleanup_mode(&model_path, cleanup_mode.clone())
                 .map_err(|e| error!("failed to load STT pipeline: {e:#}"))
@@ -461,7 +451,6 @@ mod tests {
         let second = plan_fresh(Some(&first.record), "How are you?");
         assert_eq!(second.text, " How are you?");
         assert_eq!(second.record.separator, " ");
-        // The separator counts toward the undo length, since it was typed.
         assert_eq!(second.record.total_chars, 13);
     }
 
@@ -475,9 +464,6 @@ mod tests {
 
     #[test]
     fn correction_retypes_the_separator_it_backspaced_over() {
-        // Regression: a correction used to backspace the previous insertion in
-        // full — separator included — but retype only the replacement body,
-        // collapsing the space between two utterances in continuous mode.
         let first = plan_fresh(None, "Hello there.");
         let second = plan_fresh(Some(&first.record), "Send the report to Rahul tomorrow.");
         let correction = plan_correction(&second.record, "Send the report to Rohan tomorrow.");
@@ -521,8 +507,6 @@ mod tests {
 
     #[test]
     fn undo_length_counts_characters_not_bytes() {
-        // Backspace deletes one character, so a multi-byte transcript must be
-        // counted in chars — byte length would over-delete into earlier text.
         let plan = plan_fresh(None, "Déjà vu — naïve café.");
         assert_eq!(plan.record.total_chars, plan.text.chars().count());
         assert!(plan.record.total_chars < plan.text.len(), "fixture should be multi-byte");

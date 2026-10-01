@@ -1,10 +1,3 @@
-# Downloads a quantized whisper.cpp model for Auralis.
-#
-#   .\pull-model.ps1            # base.en  (~59 MB)  — fastest, default
-#   .\pull-model.ps1 small.en   # small.en (~190 MB) — noticeably better on
-#                               #   proper nouns and accented speech, ~3x slower
-#
-# Any downloaded model shows up in the tray Settings window's model picker.
 param(
     [ValidateSet("base.en", "small.en", "medium.en")]
     [string]$Model = "base.en"
