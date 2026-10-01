@@ -2,6 +2,7 @@ pub mod audio;
 pub mod denoise;
 pub mod resample;
 pub mod stt;
+pub mod text;
 pub mod vad;
 
 pub fn crate_version() -> &'static str {

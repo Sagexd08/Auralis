@@ -16,6 +16,8 @@ crossbeam-channel = "0.5"
 webrtc-vad = "0.4"
 nnnoiseless = "0.5"
 whisper-rs = "0.13"
+regex = "1"
+once_cell = "1"
 
 [dev-dependencies]
 hound = "3.5"
