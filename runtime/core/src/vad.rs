@@ -3,29 +3,43 @@ use webrtc_vad::{SampleRate, Vad, VadMode};
 /// 48kHz, 10ms frames (480 samples) — matches both webrtc-vad's supported rates
 /// and RNNoise's fixed frame size, so no per-frame resampling is needed upstream
 /// of denoising.
-const FRAME_SAMPLES: usize = 480;
+pub const FRAME_SAMPLES: usize = 480;
 const FRAME_MS: usize = 10;
+
+fn new_vad() -> Vad {
+    let mut vad = Vad::new();
+    vad.set_sample_rate(SampleRate::Rate48kHz);
+    vad.set_mode(VadMode::Aggressive);
+    vad
+}
+
+/// Converts one 48kHz f32 frame to the int16 frame webrtc-vad expects,
+/// zero-padding a short trailing frame up to the full 480 samples.
+fn to_vad_frame(frame: &[f32]) -> Vec<i16> {
+    let mut padded: Vec<i16> = frame
+        .iter()
+        .map(|&s| (s.clamp(-1.0, 1.0) * i16::MAX as f32) as i16)
+        .collect();
+    padded.resize(FRAME_SAMPLES, 0);
+    padded
+}
+
+/// Classifies every 10ms frame of a 48kHz mono f32 buffer as speech or not.
+/// One flag per `FRAME_SAMPLES`-sized chunk, including a zero-padded final
+/// partial chunk. Shared by `trim_silence` and the audio quality analyzer so
+/// both see the same speech/noise split.
+pub fn speech_flags_48k(samples: &[f32]) -> Vec<bool> {
+    let mut vad = new_vad();
+    samples
+        .chunks(FRAME_SAMPLES)
+        .map(|frame| vad.is_voice_segment(&to_vad_frame(frame)).unwrap_or(false))
+        .collect()
+}
 
 /// Trims leading and trailing non-speech frames from a 48kHz mono f32 buffer.
 /// Interior silence (between speech segments) is left untouched.
 pub fn trim_silence(samples: &[f32]) -> Vec<f32> {
-    let mut vad = Vad::new();
-    vad.set_sample_rate(SampleRate::Rate48kHz);
-    vad.set_mode(VadMode::Aggressive);
-
-    let frames: Vec<&[f32]> = samples.chunks(FRAME_SAMPLES).collect();
-    let speech_flags: Vec<bool> = frames
-        .iter()
-        .map(|frame| {
-            let i16_frame: Vec<i16> = frame
-                .iter()
-                .map(|&s| (s.clamp(-1.0, 1.0) * i16::MAX as f32) as i16)
-                .collect();
-            let mut padded = i16_frame.clone();
-            padded.resize(FRAME_SAMPLES, 0);
-            vad.is_voice_segment(&padded).unwrap_or(false)
-        })
-        .collect();
+    let speech_flags = speech_flags_48k(samples);
 
     let first_speech = speech_flags.iter().position(|&s| s);
     let last_speech = speech_flags.iter().rposition(|&s| s);
@@ -59,12 +73,8 @@ impl StreamSegmenter {
     /// utterance — e.g. 700ms is a natural end-of-sentence pause without
     /// being so short it splits a normal mid-sentence breath.
     pub fn new(trailing_silence_ms: u32) -> Self {
-        let mut vad = Vad::new();
-        vad.set_sample_rate(SampleRate::Rate48kHz);
-        vad.set_mode(VadMode::Aggressive);
-
         Self {
-            vad,
+            vad: new_vad(),
             speech_started: false,
             silence_run: 0,
             silence_frames_to_end: trailing_silence_ms as usize / FRAME_MS,
@@ -74,13 +84,10 @@ impl StreamSegmenter {
     /// Feed exactly one 480-sample (10ms) 48kHz mono f32 frame. Returns
     /// `true` when this frame completes an utterance boundary.
     pub fn feed(&mut self, frame: &[f32]) -> bool {
-        let i16_frame: Vec<i16> = frame
-            .iter()
-            .map(|&s| (s.clamp(-1.0, 1.0) * i16::MAX as f32) as i16)
-            .collect();
-        let mut padded = i16_frame;
-        padded.resize(FRAME_SAMPLES, 0);
-        let is_speech = self.vad.is_voice_segment(&padded).unwrap_or(false);
+        let is_speech = self
+            .vad
+            .is_voice_segment(&to_vad_frame(frame))
+            .unwrap_or(false);
 
         if is_speech {
             self.speech_started = true;
@@ -97,10 +104,7 @@ impl StreamSegmenter {
     /// Call after `feed` returns `true` and the flushed segment has been
     /// handed off, to start cleanly tracking the next utterance.
     pub fn reset(&mut self) {
-        let mut vad = Vad::new();
-        vad.set_sample_rate(SampleRate::Rate48kHz);
-        vad.set_mode(VadMode::Aggressive);
-        self.vad = vad;
+        self.vad = new_vad();
         self.speech_started = false;
         self.silence_run = 0;
     }

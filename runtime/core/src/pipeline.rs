@@ -1,6 +1,7 @@
-use crate::{audio::AudioCapture, denoise, resample, stt::SttEngine, text, vad};
+use crate::{audio::AudioCapture, denoise, quality, resample, stt::SttEngine, text, vad};
+use crate::text::CleanupMode;
 use anyhow::Result;
-use log::debug;
+use log::{debug, warn};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -33,14 +34,30 @@ pub enum Transcript {
 pub struct Pipeline {
     stt: SttEngine,
     last_transcript: Option<String>,
+    cleanup_mode: CleanupMode,
 }
 
 impl Pipeline {
     pub fn new(model_path: &Path) -> Result<Self> {
+        Self::with_cleanup_mode(model_path, CleanupMode::default())
+    }
+
+    pub fn with_cleanup_mode(model_path: &Path, cleanup_mode: CleanupMode) -> Result<Self> {
         Ok(Self {
             stt: SttEngine::load(model_path)?,
             last_transcript: None,
+            cleanup_mode,
         })
+    }
+
+    pub fn cleanup_mode(&self) -> CleanupMode {
+        self.cleanup_mode
+    }
+
+    /// Changes how much the text layer rewrites subsequent transcripts. Cheap
+    /// enough to call on every settings save — no model reload involved.
+    pub fn set_cleanup_mode(&mut self, mode: CleanupMode) {
+        self.cleanup_mode = mode;
     }
 
     /// Runs one push-to-talk cycle: captures audio from `capture` while `is_held`
@@ -137,6 +154,15 @@ impl Pipeline {
         let at_48k = resample::resample(raw_samples, native_rate, 48_000);
         debug!("resampled to 48k: {} samples ({:.2}s)", at_48k.len(), at_48k.len() as f32 / 48_000.0);
 
+        // Measured before VAD trimming and denoising, so the numbers describe
+        // what the microphone actually delivered rather than what the pipeline
+        // made of it.
+        let input_quality = quality::analyze_48k(&at_48k);
+        debug!("input audio quality: {}", input_quality.summary());
+        if input_quality.clipping {
+            warn!("input audio is clipping — lower the microphone gain for better accuracy");
+        }
+
         let trimmed = vad::trim_silence(&at_48k);
         debug!("after VAD trim: {} samples ({:.2}s)", trimmed.len(), trimmed.len() as f32 / 48_000.0);
         if trimmed.is_empty() {
@@ -153,7 +179,7 @@ impl Pipeline {
         let raw_text = self.stt.transcribe(&at_16k)?;
         debug!("STT took {:.2}s, raw output: {raw_text:?}", stt_start.elapsed().as_secs_f32());
 
-        let cleaned = text::clean_transcript(&raw_text);
+        let cleaned = text::clean_transcript_with(&raw_text, self.cleanup_mode);
         if cleaned.is_empty() {
             return Ok(Transcript::Empty);
         }

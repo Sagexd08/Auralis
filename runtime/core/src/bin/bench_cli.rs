@@ -6,7 +6,7 @@
 //! out" so the harness can vary model/preprocessing/dataset without any
 //! Rust changes.
 use anyhow::{Context, Result};
-use auralis_runtime::{denoise, resample, stt::SttEngine, vad};
+use auralis_runtime::{denoise, quality, resample, stt::SttEngine, vad};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
@@ -32,6 +32,12 @@ struct Args {
     /// Preprocessing variant to apply before transcription.
     #[arg(long, value_enum, default_value_t = Preprocess::Raw)]
     preprocess: Preprocess,
+
+    /// Also report input audio quality (SNR, speech ratio, RMS, clipping) on
+    /// stderr. Kept off stdout so the harness still reads exactly one line of
+    /// transcript there.
+    #[arg(long)]
+    quality: bool,
 }
 
 fn read_wav_mono_f32(path: &PathBuf) -> Result<(Vec<f32>, u32)> {
@@ -68,6 +74,11 @@ fn main() -> Result<()> {
 
     let (samples, sample_rate) = read_wav_mono_f32(&args.input)?;
 
+    if args.quality {
+        let at_48k = resample::resample(&samples, sample_rate, 48_000);
+        eprintln!("quality: {}", quality::analyze_48k(&at_48k).summary());
+    }
+
     let samples_16k = match args.preprocess {
         Preprocess::Raw => resample::resample(&samples, sample_rate, 16_000),
         Preprocess::VadDenoise => {
@@ -79,6 +90,9 @@ fn main() -> Result<()> {
     };
 
     let engine = SttEngine::load(&args.model)?;
+    // Intentionally the raw model output: the harness scores this against
+    // normalized reference text, so running the desktop app's text cleanup
+    // here would measure the cleanup rules rather than the model.
     let transcript = engine.transcribe(&samples_16k)?;
 
     println!("{transcript}");
