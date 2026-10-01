@@ -24,8 +24,35 @@ MIC → VAD → DENOISER → STT → TEXT CLEANUP → KEYBOARD INSERTION
 - **VAD** — [webrtc-vad](https://github.com/valenzuela/webrtc-vad) trims leading/trailing silence
 - **Denoise** — RNNoise via [nnnoiseless](https://github.com/jneem/nnnoiseless) (pure Rust)
 - **STT** — [whisper.cpp](https://github.com/ggerganov/whisper.cpp) via [whisper-rs](https://github.com/tazz4843/whisper-rs), quantized GGUF weights, beam search with temperature fallback, optional CUDA acceleration
-- **Text cleanup** — local rules only: capitalization, terminal punctuation, and a spoken-correction heuristic ("actually, change X to Y")
+- **Text cleanup** — local rules only: capitalization, terminal punctuation, disfluency removal, and a spoken-correction heuristic ("actually, change X to Y")
 - **Insertion** — simulated keystrokes via [enigo](https://github.com/enigo-rs/enigo), with a clipboard fallback. A spoken correction backspaces the text Auralis just typed and replaces it in place
+
+### Text cleanup modes
+
+How much the text layer is allowed to rewrite what you said is a setting
+(tray **Settings → Text cleanup**). `raw` always stays available, so the
+transcript can be inspected without any rules in the way:
+
+| mode | disfluencies removed | capitalized | terminal punctuation |
+|---|---|---|---|
+| `raw` | no | no | no |
+| `clean` *(default)* | no | yes | yes |
+| `polished` | yes | yes | yes |
+| `developer` | yes | no | no |
+
+`developer` exists because dictating `cargo test --locked` into a terminal
+should not acquire a trailing period. Disfluency removal is deliberately
+conservative — only tokens that are not also ordinary English words, so
+"summary" and "ahead" survive while a standalone "um" does not.
+
+### Audio quality analysis
+
+Every utterance is measured before VAD trimming and denoising, and reported at
+`debug` level (`RUST_LOG=auralis_runtime=debug`): speech-to-noise ratio in dB,
+the fraction of frames the VAD called speech, RMS level, and whether the input
+clipped — clipping also warns, since it is the most common fixable cause of bad
+transcripts. SNR reads `n/a` rather than a fabricated number when the buffer has
+no speech frames or no noise frames to compare against.
 
 ### Accuracy knobs
 
@@ -64,8 +91,10 @@ independent of the Tauri app shell — see the design doc for the full rationale
 ## Status
 
 Phase 1 is implemented task-by-task per
-[`docs/superpowers/plans/2026-10-01-push-to-talk-dictation.md`](docs/superpowers/plans/2026-10-01-push-to-talk-dictation.md).
-Current progress:
+[`docs/superpowers/plans/2026-10-01-push-to-talk-dictation.md`](docs/superpowers/plans/2026-10-01-push-to-talk-dictation.md),
+and the phases after it have since extended it past that plan's original scope.
+
+**Phase 1 — vertical slice**
 
 - [x] Workspace skeleton
 - [x] Resampling utility (rubato)
@@ -75,7 +104,6 @@ Current progress:
 - [x] STT via whisper.cpp
 - [x] Text cleanup rules
 - [x] Pipeline orchestration
-- [ ] CUDA acceleration (deferred — no CUDA Toolkit on this machine; CPU build works)
 - [x] Tauri desktop app scaffold
 - [x] Global hotkey, pipeline wiring, keyboard injection
 - [x] Manual end-to-end verification (live mic, push-to-talk and continuous)
@@ -89,12 +117,15 @@ Current progress:
 - [x] Toggle/continuous dictation via VAD stream segmentation (Ctrl+Shift+Space)
 - [x] Tray icon, settings window, persisted config (hotkeys, model, mic device)
 - [x] In-place spoken correction — backspaces what Auralis typed and replaces it
+- [x] Text cleanup modes — `raw` / `clean` / `polished` / `developer`
+- [x] Audio quality analysis — SNR, speech ratio, clipping, RMS
 
 **Phase 4 — shipping**
 
 - [x] GitHub Actions CI (runtime tests + Linux Tauri build)
 - [x] Brand assets (app icon, banner)
 - [x] STT accuracy pass (beam search, no_context, temperature fallback)
+- [ ] CUDA acceleration — deferred; no CUDA Toolkit available, the CPU build works
 - [ ] Signed Windows installer / release automation
 
 ## Building
@@ -135,10 +166,18 @@ Measures whether VAD+denoise actually helps STT accuracy rather than assuming
 it does — WER/CER/RTF across model size x raw/vad-denoise x clean/noisy. See
 [`benchmarks/README.md`](benchmarks/README.md).
 
-## Out of scope for Phase 1
+## Still out of scope
 
-- Toggle/continuous dictation modes — push-to-talk only
-- Tray icon UI polish, settings persistence, model-selection UI
-- macOS/Linux support
-- Cloud LLM text polish
-- True in-place correction of already-inserted text
+The PRD (`auralis_prd_end_to_end.md`) describes a far larger system. Per its own
+§53, the model and the dictation loop come before the infrastructure, so none of
+the following is built yet:
+
+- A custom-trained STT model — Auralis currently runs existing whisper.cpp weights
+- TTS, and the voice feedback loop around it
+- macOS / Linux support — the desktop app is Windows-targeted
+- Cloud LLM text polish; all text cleanup is local rule-based
+- Self-hosted compute fabric: node agent, scheduler, model routing, Triton, K8s
+- Mobile (Android / iOS) and the quantized Nano model
+- Dictated-symbol mapping in `developer` mode ("open paren" → `(`)
+- Reverb scoring and noise classification in the audio quality analyzer — both
+  need trained models, so they are absent rather than stubbed

@@ -1399,3 +1399,10 @@ everything mechanically verifiable without a human voice has passed.
 - macOS/Linux support
 - Cloud LLM text polish
 - True in-place correction of already-inserted text (see Task 12, Step 4)
+
+> **Superseded.** Everything in the list above except macOS/Linux support and
+> cloud LLM text polish has since been built in follow-up work — the benchmark
+> harness, continuous/toggle mode, the tray icon with persisted settings, and
+> true in-place correction all shipped after this plan closed. The list is kept
+> as written because it records this plan's own boundary; `README.md` has the
+> current picture of what exists and what does not.

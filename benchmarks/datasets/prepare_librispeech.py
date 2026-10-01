@@ -31,7 +31,7 @@ def main() -> None:
     parser.add_argument("--count", type=int, default=20, help="number of clips to pull")
     args = parser.parse_args()
 
-    from datasets import load_dataset  # imported lazily: optional, heavy dependency
+    from datasets import load_dataset
 
     args.dest.mkdir(parents=True, exist_ok=True)
     ds = load_dataset("openslr/librispeech_asr", "clean", split="test", streaming=True)

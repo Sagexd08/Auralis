@@ -4,6 +4,7 @@ mod inject;
 
 use auralis_runtime::audio::AudioCapture;
 use auralis_runtime::pipeline::{Pipeline, Transcript};
+use auralis_runtime::text::{CleanupMode, CleanupModeHandle};
 use config::AppConfig;
 use log::{error, info, warn};
 use std::path::PathBuf;
@@ -22,12 +23,76 @@ struct AppState {
     pipeline: Arc<Mutex<Option<Pipeline>>>,
     held: Arc<AtomicBool>,
     continuous_active: Arc<AtomicBool>,
-    /// Character count of the text this app most recently typed via
-    /// keystroke injection, or `None` if nothing was typed (clipboard
-    /// fallback, injection error, or nothing inserted yet). Lets a spoken
-    /// correction backspace exactly what it typed and retype in place,
-    /// instead of appending the corrected sentence after it.
-    last_inserted_chars: Arc<Mutex<Option<usize>>>,
+    /// What this app most recently typed via keystroke injection, or `None`
+    /// if nothing was typed (clipboard fallback, injection error, or nothing
+    /// inserted yet). Lets a spoken correction backspace exactly what it
+    /// typed and retype in place, instead of appending the corrected
+    /// sentence after it.
+    last_insertion: Arc<Mutex<Option<LastInsertion>>>,
+    /// Read by the pipeline on every utterance. Held here as well as in the
+    /// pipeline so a settings save can change it without taking the pipeline
+    /// lock, which continuous dictation holds for a whole session.
+    cleanup_mode: CleanupModeHandle,
+}
+
+/// Bookkeeping for one completed keystroke insertion.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct LastInsertion {
+    /// The separator typed immediately before the utterance text: `" "`
+    /// between consecutive utterances, `""` for the first one. A correction
+    /// has to retype this, because the backspaces that undo the insertion
+    /// delete the separator too.
+    separator: String,
+    /// Characters in separator + text, i.e. exactly how many backspaces undo
+    /// this insertion.
+    total_chars: usize,
+}
+
+/// What to type next, and what to remember once it lands. Pure bookkeeping,
+/// kept separate from the `AppHandle`-bound apply step so the character
+/// arithmetic a correction depends on is unit-testable without a running
+/// Tauri app.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Insertion {
+    /// Exact text to type, separator included.
+    text: String,
+    /// Backspaces to send first; 0 for a fresh insertion.
+    undo_chars: usize,
+    /// What to record as the new `last_insertion` on success.
+    record: LastInsertion,
+}
+
+/// Plans a fresh insertion. Consecutive utterances (as continuous mode
+/// produces) get a leading space so words don't run together; the very first
+/// insertion, and the one after a clipboard fallback left nothing typed,
+/// don't.
+fn plan_fresh(previous: Option<&LastInsertion>, text: &str) -> Insertion {
+    let separator = if previous.is_some() { " " } else { "" };
+    let full = format!("{separator}{text}");
+    Insertion {
+        undo_chars: 0,
+        record: LastInsertion {
+            separator: separator.to_string(),
+            total_chars: full.chars().count(),
+        },
+        text: full,
+    }
+}
+
+/// Plans a spoken correction: undo the whole previous insertion, then retype
+/// it with `replacement` as the body. The separator is carried over
+/// deliberately — undoing `previous.total_chars` deletes it, so retyping
+/// without it would run the correction into the utterance before it.
+fn plan_correction(previous: &LastInsertion, replacement: &str) -> Insertion {
+    let full = format!("{}{}", previous.separator, replacement);
+    Insertion {
+        undo_chars: previous.total_chars,
+        record: LastInsertion {
+            separator: previous.separator.clone(),
+            total_chars: full.chars().count(),
+        },
+        text: full,
+    }
 }
 
 fn models_dir() -> PathBuf {
@@ -38,27 +103,25 @@ fn models_dir() -> PathBuf {
 /// replacing the previously-inserted text in place for a spoken correction),
 /// updating the status event either way. Shared by push-to-talk and
 /// continuous mode so both report status identically.
-fn handle_transcript_result(handle: &AppHandle, last_inserted: &Mutex<Option<usize>>, result: anyhow::Result<Transcript>) {
+fn handle_transcript_result(handle: &AppHandle, last_insertion: &Mutex<Option<LastInsertion>>, result: anyhow::Result<Transcript>) {
     match result {
         Ok(Transcript::Fresh(text)) => {
-            // Separate consecutive utterances (e.g. in continuous mode) with
-            // a space so words don't run together; skip it for the very
-            // first insertion or after a clipboard fallback left nothing typed.
-            let text = if last_inserted.lock().unwrap().is_some() {
-                format!(" {text}")
-            } else {
-                text
-            };
             let _ = handle.emit("auralis://transcript", &text);
-            apply_insert(handle, last_inserted, &text);
+            let plan = plan_fresh(last_insertion.lock().unwrap().as_ref(), &text);
+            apply(handle, last_insertion, plan, "Idle", "Idle (copied to clipboard)");
         }
         Ok(Transcript::Correction(replacement)) => {
             let _ = handle.emit("auralis://transcript", &replacement);
-            match last_inserted.lock().unwrap().take() {
-                Some(undo_chars) => apply_replace(handle, last_inserted, undo_chars, &replacement),
+            let previous = last_insertion.lock().unwrap().take();
+            match previous {
+                Some(previous) => {
+                    let plan = plan_correction(&previous, &replacement);
+                    apply(handle, last_insertion, plan, "Idle (corrected)", "Idle (correction copied to clipboard)");
+                }
                 None => {
                     warn!("correction detected but nothing was tracked as typed; inserting fresh instead");
-                    apply_insert(handle, last_inserted, &replacement);
+                    let plan = plan_fresh(None, &replacement);
+                    apply(handle, last_insertion, plan, "Idle", "Idle (copied to clipboard)");
                 }
             }
         }
@@ -72,42 +135,35 @@ fn handle_transcript_result(handle: &AppHandle, last_inserted: &Mutex<Option<usi
     }
 }
 
-/// Types `text` via keystroke injection (or copies to clipboard on failure)
-/// and records how many characters landed, so a later correction can undo
-/// exactly that much.
-fn apply_insert(handle: &AppHandle, last_inserted: &Mutex<Option<usize>>, text: &str) {
-    match crate::inject::insert_text(text) {
+/// Carries out `plan` via keystroke injection (backspacing first if it is a
+/// correction), records what landed so a later correction can undo exactly
+/// that much, and reports status. A clipboard fallback or an outright failure
+/// clears the record, since nothing was typed for a correction to undo.
+fn apply(
+    handle: &AppHandle,
+    last_insertion: &Mutex<Option<LastInsertion>>,
+    plan: Insertion,
+    ok_status: &str,
+    clipboard_status: &str,
+) {
+    let typed = if plan.undo_chars > 0 {
+        crate::inject::replace_text(plan.undo_chars, &plan.text)
+    } else {
+        crate::inject::insert_text(&plan.text)
+    };
+
+    match typed {
         Ok(true) => {
-            *last_inserted.lock().unwrap() = Some(text.chars().count());
-            let _ = handle.emit("auralis://status", "Idle");
+            *last_insertion.lock().unwrap() = Some(plan.record);
+            let _ = handle.emit("auralis://status", ok_status);
         }
         Ok(false) => {
-            *last_inserted.lock().unwrap() = None;
-            let _ = handle.emit("auralis://status", "Idle (copied to clipboard)");
+            *last_insertion.lock().unwrap() = None;
+            let _ = handle.emit("auralis://status", clipboard_status);
         }
         Err(e) => {
             error!("keystroke injection failed: {e}");
-            *last_inserted.lock().unwrap() = None;
-            let _ = handle.emit("auralis://status", format!("Injection error: {e}"));
-        }
-    }
-}
-
-/// Backspaces `undo_chars` characters and types `replacement` in their
-/// place (or copies to clipboard on failure), updating the tracked count.
-fn apply_replace(handle: &AppHandle, last_inserted: &Mutex<Option<usize>>, undo_chars: usize, replacement: &str) {
-    match crate::inject::replace_text(undo_chars, replacement) {
-        Ok(true) => {
-            *last_inserted.lock().unwrap() = Some(replacement.chars().count());
-            let _ = handle.emit("auralis://status", "Idle (corrected)");
-        }
-        Ok(false) => {
-            *last_inserted.lock().unwrap() = None;
-            let _ = handle.emit("auralis://status", "Idle (correction copied to clipboard)");
-        }
-        Err(e) => {
-            error!("keystroke correction failed: {e}");
-            *last_inserted.lock().unwrap() = None;
+            *last_insertion.lock().unwrap() = None;
             let _ = handle.emit("auralis://status", format!("Injection error: {e}"));
         }
     }
@@ -121,7 +177,7 @@ fn handle_push_to_talk_event(app: &AppHandle, state: &AppState, event: tauri_plu
 
             let held = state.held.clone();
             let pipeline = state.pipeline.clone();
-            let last_inserted = state.last_inserted_chars.clone();
+            let last_insertion = state.last_insertion.clone();
             let mic_device = state.config.lock().unwrap().mic_device.clone();
             let handle = app.clone();
 
@@ -145,7 +201,7 @@ fn handle_push_to_talk_event(app: &AppHandle, state: &AppState, event: tauri_plu
                     return;
                 };
                 let result = pipeline.run_once(&capture, || held.load(Ordering::SeqCst));
-                handle_transcript_result(&handle, &last_inserted, result);
+                handle_transcript_result(&handle, &last_insertion, result);
             });
         }
         ShortcutState::Released => {
@@ -165,8 +221,6 @@ fn handle_toggle_event(app: &AppHandle, state: &AppState, event: tauri_plugin_gl
     let now_active = !was_active;
 
     if !now_active {
-        // Flag flip alone stops the running thread's loop (it polls this
-        // same flag); nothing else to do here.
         return;
     }
 
@@ -175,7 +229,7 @@ fn handle_toggle_event(app: &AppHandle, state: &AppState, event: tauri_plugin_gl
 
     let continuous_active = state.continuous_active.clone();
     let pipeline = state.pipeline.clone();
-    let last_inserted = state.last_inserted_chars.clone();
+    let last_insertion = state.last_insertion.clone();
     let mic_device = state.config.lock().unwrap().mic_device.clone();
     let handle = app.clone();
 
@@ -200,7 +254,7 @@ fn handle_toggle_event(app: &AppHandle, state: &AppState, event: tauri_plugin_gl
         pipeline.run_continuous(
             &capture,
             || continuous_active.load(Ordering::SeqCst),
-            |result| handle_transcript_result(&handle, &last_inserted, result),
+            |result| handle_transcript_result(&handle, &last_insertion, result),
         );
 
         info!("continuous mode stopped");
@@ -265,6 +319,13 @@ fn list_models() -> Vec<String> {
     names
 }
 
+/// The cleanup modes this build supports, for the settings dropdown — so the
+/// UI can't offer a mode `save_config` would then reject.
+#[tauri::command]
+fn list_cleanup_modes() -> Vec<String> {
+    CleanupMode::all().iter().map(|m| m.as_str().to_string()).collect()
+}
+
 #[tauri::command]
 fn list_mic_devices() -> Vec<String> {
     auralis_runtime::audio::list_input_device_names().unwrap_or_default()
@@ -274,6 +335,9 @@ fn list_mic_devices() -> Vec<String> {
 fn save_config(app: AppHandle, state: tauri::State<AppState>, new_config: AppConfig) -> Result<(), String> {
     hotkey::parse(&new_config.push_to_talk_hotkey).map_err(|e| e.to_string())?;
     hotkey::parse(&new_config.toggle_hotkey).map_err(|e| e.to_string())?;
+
+    let cleanup_mode = CleanupMode::parse(&new_config.cleanup_mode)
+        .ok_or_else(|| format!("unknown text cleanup mode {:?}", new_config.cleanup_mode))?;
 
     let (model_changed, hotkeys_changed) = {
         let current = state.config.lock().unwrap();
@@ -286,9 +350,11 @@ fn save_config(app: AppHandle, state: tauri::State<AppState>, new_config: AppCon
 
     new_config.save(&state.config_dir).map_err(|e| e.to_string())?;
 
+    state.cleanup_mode.set(cleanup_mode);
+
     if model_changed {
         let model_path = models_dir().join(&new_config.model_file);
-        match Pipeline::new(&model_path) {
+        match Pipeline::with_cleanup_mode(&model_path, state.cleanup_mode.clone()) {
             Ok(p) => *state.pipeline.lock().unwrap() = Some(p),
             Err(e) => return Err(format!("failed to load model {}: {e}", new_config.model_file)),
         }
@@ -306,13 +372,11 @@ fn save_config(app: AppHandle, state: tauri::State<AppState>, new_config: AppCon
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // RUST_LOG=auralis_runtime=debug,auralis_desktop_lib=debug for verbose
-    // per-stage pipeline tracing; defaults to warnings/errors only.
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![get_config, save_config, list_models, list_mic_devices])
+        .invoke_handler(tauri::generate_handler![get_config, save_config, list_models, list_mic_devices, list_cleanup_modes])
         .setup(|app| {
             let config_dir = app.path().app_config_dir().unwrap_or_else(|_| PathBuf::from("."));
             let config = AppConfig::load(&config_dir);
@@ -321,11 +385,8 @@ pub fn run() {
             if !model_path.exists() {
                 warn!("Model not found at {model_path:?}. Run models/pull-model.ps1 first.");
             }
-            // A missing/corrupt model shouldn't crash this tray-only app with no
-            // visible window and no explanation — load it lazily and report a
-            // clear status if a hotkey is pressed before it's available, instead
-            // of panicking the whole process in setup().
-            let pipeline = Pipeline::new(&model_path)
+            let cleanup_mode = CleanupModeHandle::new(config.cleanup_mode());
+            let pipeline = Pipeline::with_cleanup_mode(&model_path, cleanup_mode.clone())
                 .map_err(|e| error!("failed to load STT pipeline: {e:#}"))
                 .ok();
 
@@ -335,7 +396,8 @@ pub fn run() {
                 pipeline: Arc::new(Mutex::new(pipeline)),
                 held: Arc::new(AtomicBool::new(false)),
                 continuous_active: Arc::new(AtomicBool::new(false)),
-                last_inserted_chars: Arc::new(Mutex::new(None)),
+                last_insertion: Arc::new(Mutex::new(None)),
+                cleanup_mode,
             });
 
             register_hotkeys(app.handle())?;
@@ -359,4 +421,101 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running auralis-desktop");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Replays a plan against a buffer the way the OS would: backspaces pop
+    /// characters off the end, then the plan's text is typed.
+    fn type_into(buffer: &mut String, plan: &Insertion) {
+        for _ in 0..plan.undo_chars {
+            buffer.pop();
+        }
+        buffer.push_str(&plan.text);
+    }
+
+    #[test]
+    fn first_insertion_has_no_leading_separator() {
+        let plan = plan_fresh(None, "Hello there.");
+        assert_eq!(plan.text, "Hello there.");
+        assert_eq!(plan.undo_chars, 0);
+        assert_eq!(plan.record.separator, "");
+        assert_eq!(plan.record.total_chars, 12);
+    }
+
+    #[test]
+    fn later_insertions_are_separated_by_a_space() {
+        let first = plan_fresh(None, "Hello there.");
+        let second = plan_fresh(Some(&first.record), "How are you?");
+        assert_eq!(second.text, " How are you?");
+        assert_eq!(second.record.separator, " ");
+        assert_eq!(second.record.total_chars, 13);
+    }
+
+    #[test]
+    fn correction_undoes_exactly_what_was_typed() {
+        let first = plan_fresh(None, "Send the report to Rahul tomorrow.");
+        let correction = plan_correction(&first.record, "Send the report to Rohan tomorrow.");
+        assert_eq!(correction.undo_chars, first.text.chars().count());
+        assert_eq!(correction.text, "Send the report to Rohan tomorrow.");
+    }
+
+    #[test]
+    fn correction_retypes_the_separator_it_backspaced_over() {
+        let first = plan_fresh(None, "Hello there.");
+        let second = plan_fresh(Some(&first.record), "Send the report to Rahul tomorrow.");
+        let correction = plan_correction(&second.record, "Send the report to Rohan tomorrow.");
+
+        assert_eq!(correction.text, " Send the report to Rohan tomorrow.");
+
+        let mut buffer = String::new();
+        type_into(&mut buffer, &first);
+        type_into(&mut buffer, &second);
+        type_into(&mut buffer, &correction);
+        assert_eq!(buffer, "Hello there. Send the report to Rohan tomorrow.");
+    }
+
+    #[test]
+    fn chained_corrections_keep_the_separator_each_time() {
+        let first = plan_fresh(None, "Hello there.");
+        let second = plan_fresh(Some(&first.record), "Send it to Rahul tomorrow.");
+        let one = plan_correction(&second.record, "Send it to Rohan tomorrow.");
+        let two = plan_correction(&one.record, "Send it to Rohan Friday.");
+
+        let mut buffer = String::new();
+        type_into(&mut buffer, &first);
+        type_into(&mut buffer, &second);
+        type_into(&mut buffer, &one);
+        type_into(&mut buffer, &two);
+        assert_eq!(buffer, "Hello there. Send it to Rohan Friday.");
+    }
+
+    #[test]
+    fn a_fresh_utterance_after_a_correction_is_still_separated() {
+        let first = plan_fresh(None, "Send it to Rahul.");
+        let correction = plan_correction(&first.record, "Send it to Rohan.");
+        let next = plan_fresh(Some(&correction.record), "Also cc the design team.");
+
+        let mut buffer = String::new();
+        type_into(&mut buffer, &first);
+        type_into(&mut buffer, &correction);
+        type_into(&mut buffer, &next);
+        assert_eq!(buffer, "Send it to Rohan. Also cc the design team.");
+    }
+
+    #[test]
+    fn undo_length_counts_characters_not_bytes() {
+        let plan = plan_fresh(None, "Déjà vu — naïve café.");
+        assert_eq!(plan.record.total_chars, plan.text.chars().count());
+        assert!(plan.record.total_chars < plan.text.len(), "fixture should be multi-byte");
+
+        let mut buffer = String::from("Keep this. ");
+        let follow_up = plan_fresh(Some(&plan.record), "Déjà vu — naïve café.");
+        type_into(&mut buffer, &follow_up);
+        let correction = plan_correction(&follow_up.record, "Deja vu.");
+        type_into(&mut buffer, &correction);
+        assert_eq!(buffer, "Keep this.  Deja vu.");
+    }
 }

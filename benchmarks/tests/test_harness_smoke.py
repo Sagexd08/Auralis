@@ -48,14 +48,9 @@ class HarnessSmokeTest(unittest.TestCase):
         self.assertGreater(result.total_audio_s, 0)
 
         metrics = compute_metrics(result.references, result.hypotheses, result.total_elapsed_s, result.total_audio_s)
-        # A known-good clip on base.en should transcribe near-perfectly.
         self.assertLess(metrics.wer, 0.2, f"unexpectedly high WER on clean fixture: {metrics.wer}, hyp={result.hypotheses}")
 
     def test_noisy_variant_generation_and_report_roundtrip(self):
-        # Imports the LOCAL benchmarks/datasets/ package (not pip's `datasets`
-        # library) — deliberately scoped inside this test since sys.path
-        # already has BENCH_DIR on it, and this test never needs the pip
-        # package, so the shadowing is harmless here.
         from datasets.prepare_noisy import main as prepare_noisy_main
 
         with tempfile.TemporaryDirectory() as tmp:

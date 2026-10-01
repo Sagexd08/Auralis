@@ -1,6 +1,7 @@
-use crate::{audio::AudioCapture, denoise, resample, stt::SttEngine, text, vad};
+use crate::{audio::AudioCapture, denoise, quality, resample, stt::SttEngine, text, vad};
+use crate::text::{CleanupMode, CleanupModeHandle};
 use anyhow::Result;
-use log::debug;
+use log::{debug, warn};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -33,14 +34,28 @@ pub enum Transcript {
 pub struct Pipeline {
     stt: SttEngine,
     last_transcript: Option<String>,
+    cleanup_mode: CleanupModeHandle,
 }
 
 impl Pipeline {
     pub fn new(model_path: &Path) -> Result<Self> {
+        Self::with_cleanup_mode(model_path, CleanupModeHandle::default())
+    }
+
+    /// Builds a pipeline that reads its cleanup mode from `cleanup_mode` on
+    /// every utterance, so callers can change it at any time — including while
+    /// a continuous-dictation session is running — by writing to their own
+    /// clone of the handle.
+    pub fn with_cleanup_mode(model_path: &Path, cleanup_mode: CleanupModeHandle) -> Result<Self> {
         Ok(Self {
             stt: SttEngine::load(model_path)?,
             last_transcript: None,
+            cleanup_mode,
         })
+    }
+
+    pub fn cleanup_mode(&self) -> CleanupMode {
+        self.cleanup_mode.get()
     }
 
     /// Runs one push-to-talk cycle: captures audio from `capture` while `is_held`
@@ -90,7 +105,7 @@ impl Pipeline {
                 continue;
             }
 
-            let batch: Vec<f32> = classify_native.drain(..).collect();
+            let batch: Vec<f32> = std::mem::take(&mut classify_native);
             pending_48k.extend(resample::resample(&batch, capture.sample_rate, 48_000));
 
             let mut boundary_hit = false;
@@ -137,6 +152,12 @@ impl Pipeline {
         let at_48k = resample::resample(raw_samples, native_rate, 48_000);
         debug!("resampled to 48k: {} samples ({:.2}s)", at_48k.len(), at_48k.len() as f32 / 48_000.0);
 
+        let input_quality = quality::analyze_48k(&at_48k);
+        debug!("input audio quality: {}", input_quality.summary());
+        if input_quality.clipping {
+            warn!("input audio is clipping — lower the microphone gain for better accuracy");
+        }
+
         let trimmed = vad::trim_silence(&at_48k);
         debug!("after VAD trim: {} samples ({:.2}s)", trimmed.len(), trimmed.len() as f32 / 48_000.0);
         if trimmed.is_empty() {
@@ -153,7 +174,7 @@ impl Pipeline {
         let raw_text = self.stt.transcribe(&at_16k)?;
         debug!("STT took {:.2}s, raw output: {raw_text:?}", stt_start.elapsed().as_secs_f32());
 
-        let cleaned = text::clean_transcript(&raw_text);
+        let cleaned = text::clean_transcript_with(&raw_text, self.cleanup_mode.get());
         if cleaned.is_empty() {
             return Ok(Transcript::Empty);
         }
@@ -205,7 +226,6 @@ mod tests {
         let mut prev = Some("Send the report to Rahul tomorrow.".to_string());
         let out = Pipeline::classify_output(&mut prev, "Actually, change Rahul to Rohan.".to_string());
         assert_eq!(out, Transcript::Correction("Send the report to Rohan tomorrow.".to_string()));
-        // `prev` advances to the corrected sentence so a second correction chains onto it.
         assert_eq!(prev.as_deref(), Some("Send the report to Rohan tomorrow."));
     }
 

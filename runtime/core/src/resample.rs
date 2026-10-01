@@ -39,7 +39,6 @@ mod tests {
 
     #[test]
     fn downsamples_48k_to_16k_roughly_one_third_length() {
-        // 480ms of a 100Hz test tone at 48kHz
         let sr = 48_000u32;
         let freq = 100.0f32;
         let input: Vec<f32> = (0..(sr / 2))

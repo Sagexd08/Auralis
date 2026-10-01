@@ -1,22 +1,145 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::{Arc, Mutex};
+
+/// How much the text layer is allowed to rewrite what was actually said.
+///
+/// PRD §23 requires an explicit raw mode so a transcript can always be
+/// inspected without the cleanup rules in the way — every other mode layers
+/// rules on top of that baseline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CleanupMode {
+    /// Exactly what the model emitted, trimmed and nothing else: no casing,
+    /// punctuation, filler removal or whitespace collapsing.
+    Raw,
+    /// Leading capital, single terminal punctuation mark, collapsed runs of
+    /// whitespace. The default, and what Phase 1 shipped.
+    #[default]
+    Clean,
+    /// `Clean`, plus removal of spoken disfluencies ("uh", "um", ...) — for
+    /// prose headed somewhere it will be read, like an email or a document.
+    Polished,
+    /// Disfluency removal and whitespace collapsing, but no capitalization
+    /// and no invented terminal punctuation — dictating a shell command or an
+    /// identifier should not acquire a trailing period.
+    Developer,
+}
+
+impl CleanupMode {
+    /// Parses the lowercase tag used in the persisted desktop config and in
+    /// the benchmark CLI, so the same spelling works in both.
+    pub fn parse(s: &str) -> Option<Self> {
+        match s.trim().to_lowercase().as_str() {
+            "raw" => Some(Self::Raw),
+            "clean" => Some(Self::Clean),
+            "polished" => Some(Self::Polished),
+            "developer" | "dev" => Some(Self::Developer),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Raw => "raw",
+            Self::Clean => "clean",
+            Self::Polished => "polished",
+            Self::Developer => "developer",
+        }
+    }
+
+    /// Every mode, in the order the settings UI should list them.
+    pub fn all() -> [Self; 4] {
+        [Self::Raw, Self::Clean, Self::Polished, Self::Developer]
+    }
+}
+
+/// A cleanup-mode setting shared between the pipeline that reads it and
+/// whatever changes it.
+///
+/// The desktop app holds the pipeline behind a mutex that continuous dictation
+/// keeps locked for a whole session, so changing the mode through the pipeline
+/// itself would make a settings save block until dictation stopped. This is
+/// locked only for the instant it takes to read or write the mode.
+#[derive(Debug, Clone)]
+pub struct CleanupModeHandle(Arc<Mutex<CleanupMode>>);
+
+impl CleanupModeHandle {
+    pub fn new(mode: CleanupMode) -> Self {
+        Self(Arc::new(Mutex::new(mode)))
+    }
+
+    pub fn get(&self) -> CleanupMode {
+        *self.0.lock().expect("cleanup mode mutex poisoned")
+    }
+
+    pub fn set(&self, mode: CleanupMode) {
+        *self.0.lock().expect("cleanup mode mutex poisoned") = mode;
+    }
+}
+
+impl Default for CleanupModeHandle {
+    fn default() -> Self {
+        Self::new(CleanupMode::default())
+    }
+}
+
+/// Spoken disfluencies, matched standalone (never inside a word) along with a
+/// comma whisper.cpp tends to emit after them. Deliberately conservative:
+/// only tokens that are not also ordinary English words, so `Polished` can't
+/// quietly eat meaning. Words like "like" and "so" are left alone for exactly
+/// that reason.
+static FILLER_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)\b(?:uh+|um+|uhm|erm|er|ah|hmm+|mm+)\b,?\s*").unwrap());
+
+static WHITESPACE_RUN: Lazy<Regex> = Lazy::new(|| Regex::new(r"\s+").unwrap());
+
+/// Leftovers from removing a filler that sat between two commas, e.g.
+/// "I was, uh, thinking" -> "I was, , thinking" -> "I was, thinking".
+static DOUBLED_COMMA: Lazy<Regex> = Lazy::new(|| Regex::new(r",(?:\s*,)+").unwrap());
+static SPACE_BEFORE_PUNCT: Lazy<Regex> = Lazy::new(|| Regex::new(r"\s+([,.!?;:])").unwrap());
 
 /// Capitalizes the first letter and ensures a single terminal punctuation mark.
 /// whisper.cpp's base.en model already emits punctuation/casing for most speech,
 /// so this is a safety net rather than the primary source of punctuation.
+///
+/// Equivalent to [`clean_transcript_with`] in [`CleanupMode::Clean`].
 pub fn clean_transcript(raw: &str) -> String {
+    clean_transcript_with(raw, CleanupMode::Clean)
+}
+
+/// Applies `mode`'s cleanup rules to a raw transcript.
+pub fn clean_transcript_with(raw: &str, mode: CleanupMode) -> String {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
         return String::new();
     }
+    if mode == CleanupMode::Raw {
+        return trimmed.to_string();
+    }
 
-    let mut chars = trimmed.chars();
-    let first = chars.next().unwrap().to_uppercase().to_string();
-    let rest: String = chars.collect();
-    let mut result = format!("{first}{rest}");
+    let mut result = trimmed.to_string();
 
-    if !result.ends_with(['.', '!', '?']) {
-        result.push('.');
+    if matches!(mode, CleanupMode::Polished | CleanupMode::Developer) {
+        result = FILLER_PATTERN.replace_all(&result, "").to_string();
+        result = DOUBLED_COMMA.replace_all(&result, ",").to_string();
+        result = SPACE_BEFORE_PUNCT.replace_all(&result, "$1").to_string();
+        result = result.trim_start_matches([',', ' ']).to_string();
+    }
+
+    result = WHITESPACE_RUN.replace_all(&result, " ").trim().to_string();
+    if result.is_empty() {
+        return String::new();
+    }
+
+    if matches!(mode, CleanupMode::Clean | CleanupMode::Polished) {
+        let mut chars = result.chars();
+        let first = chars.next().unwrap().to_uppercase().to_string();
+        let rest: String = chars.collect();
+        result = format!("{first}{rest}");
+
+        if !result.ends_with(['.', '!', '?']) {
+            result.push('.');
+        }
     }
 
     result
@@ -61,6 +184,98 @@ mod tests {
     #[test]
     fn empty_input_stays_empty() {
         assert_eq!(clean_transcript("   "), "");
+    }
+
+    #[test]
+    fn clean_collapses_whitespace_runs() {
+        assert_eq!(clean_transcript("hello   there\n\nfriend"), "Hello there friend.");
+    }
+
+    #[test]
+    fn raw_mode_changes_nothing_but_surrounding_whitespace() {
+        let raw = "  uh, hello   there  ";
+        assert_eq!(clean_transcript_with(raw, CleanupMode::Raw), "uh, hello   there");
+    }
+
+    #[test]
+    fn clean_mode_keeps_fillers() {
+        assert_eq!(clean_transcript_with("uh, hello there", CleanupMode::Clean), "Uh, hello there.");
+    }
+
+    #[test]
+    fn polished_mode_strips_leading_filler_then_capitalizes() {
+        assert_eq!(
+            clean_transcript_with("um, we need to deploy this tomorrow", CleanupMode::Polished),
+            "We need to deploy this tomorrow."
+        );
+    }
+
+    #[test]
+    fn polished_mode_strips_interior_filler_without_doubling_commas() {
+        assert_eq!(
+            clean_transcript_with("I was, uh, thinking about it", CleanupMode::Polished),
+            "I was, thinking about it."
+        );
+    }
+
+    #[test]
+    fn polished_mode_strips_repeated_and_lengthened_fillers() {
+        assert_eq!(
+            clean_transcript_with("uhhh um so we ship it", CleanupMode::Polished),
+            "So we ship it."
+        );
+    }
+
+    #[test]
+    fn polished_mode_leaves_ordinary_words_that_look_like_fillers_alone() {
+        assert_eq!(
+            clean_transcript_with("summary of the error ahead", CleanupMode::Polished),
+            "Summary of the error ahead."
+        );
+    }
+
+    #[test]
+    fn developer_mode_adds_no_capital_and_no_terminal_period() {
+        assert_eq!(
+            clean_transcript_with("um, cargo test --locked", CleanupMode::Developer),
+            "cargo test --locked"
+        );
+    }
+
+    #[test]
+    fn developer_mode_preserves_punctuation_the_speaker_dictated() {
+        assert_eq!(
+            clean_transcript_with("git commit -m \"fix it.\"", CleanupMode::Developer),
+            "git commit -m \"fix it.\""
+        );
+    }
+
+    #[test]
+    fn all_filler_input_cleans_to_empty() {
+        assert_eq!(clean_transcript_with("uh um hmm", CleanupMode::Polished), "");
+    }
+
+    #[test]
+    fn mode_tags_round_trip() {
+        for mode in CleanupMode::all() {
+            assert_eq!(CleanupMode::parse(mode.as_str()), Some(mode));
+        }
+        assert_eq!(CleanupMode::parse("DEV"), Some(CleanupMode::Developer));
+        assert_eq!(CleanupMode::parse("nonsense"), None);
+    }
+
+    #[test]
+    fn handle_shares_mode_between_clones() {
+        let a = CleanupModeHandle::new(CleanupMode::Clean);
+        let b = a.clone();
+        assert_eq!(b.get(), CleanupMode::Clean);
+        b.set(CleanupMode::Developer);
+        assert_eq!(a.get(), CleanupMode::Developer, "clones must see each other's writes");
+    }
+
+    #[test]
+    fn handle_defaults_to_clean() {
+        assert_eq!(CleanupModeHandle::default().get(), CleanupMode::Clean);
     }
 
     #[test]

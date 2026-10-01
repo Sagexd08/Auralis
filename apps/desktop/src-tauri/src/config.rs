@@ -1,3 +1,4 @@
+use auralis_runtime::text::CleanupMode;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -15,6 +16,11 @@ pub struct AppConfig {
     pub model_file: String,
     /// `None` means use the system default input device.
     pub mic_device: Option<String>,
+    /// How much the text layer rewrites the transcript: one of `raw`,
+    /// `clean`, `polished`, `developer`. Parsed by `CleanupMode::parse`;
+    /// an unrecognized value falls back to the default rather than failing
+    /// to load the whole config.
+    pub cleanup_mode: String,
 }
 
 impl Default for AppConfig {
@@ -24,6 +30,7 @@ impl Default for AppConfig {
             toggle_hotkey: "Ctrl+Shift+Space".to_string(),
             model_file: "ggml-base.en-q5_1.bin".to_string(),
             mic_device: None,
+            cleanup_mode: CleanupMode::default().as_str().to_string(),
         }
     }
 }
@@ -41,6 +48,12 @@ impl AppConfig {
             Ok(contents) => serde_json::from_str(&contents).unwrap_or_default(),
             Err(_) => Self::default(),
         }
+    }
+
+    /// The configured cleanup mode, falling back to the default if the stored
+    /// string isn't a mode this build knows about.
+    pub fn cleanup_mode(&self) -> CleanupMode {
+        CleanupMode::parse(&self.cleanup_mode).unwrap_or_default()
     }
 
     pub fn save(&self, config_dir: &Path) -> anyhow::Result<()> {
@@ -63,6 +76,18 @@ mod tests {
     }
 
     #[test]
+    fn default_cleanup_mode_is_clean() {
+        assert_eq!(AppConfig::default().cleanup_mode(), CleanupMode::Clean);
+    }
+
+    #[test]
+    fn unknown_cleanup_mode_falls_back_to_default() {
+        let mut config = AppConfig::default();
+        config.cleanup_mode = "wat".to_string();
+        assert_eq!(config.cleanup_mode(), CleanupMode::Clean);
+    }
+
+    #[test]
     fn round_trips_through_save_and_load() {
         let dir = std::env::temp_dir().join(format!("auralis-config-roundtrip-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
@@ -70,11 +95,13 @@ mod tests {
         let mut config = AppConfig::default();
         config.model_file = "ggml-tiny.en-q5_1.bin".to_string();
         config.mic_device = Some("Test Mic".to_string());
+        config.cleanup_mode = "polished".to_string();
         config.save(&dir).expect("save succeeds");
 
         let loaded = AppConfig::load(&dir);
         assert_eq!(loaded.model_file, "ggml-tiny.en-q5_1.bin");
         assert_eq!(loaded.mic_device, Some("Test Mic".to_string()));
+        assert_eq!(loaded.cleanup_mode(), CleanupMode::Polished);
 
         let _ = fs::remove_dir_all(&dir);
     }
