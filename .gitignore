@@ -13,3 +13,5 @@ benchmarks/reports/*.md
 !benchmarks/reports/.gitkeep
 .worktrees/
 .cargo/config.toml
+.vercel/
+.impeccable/

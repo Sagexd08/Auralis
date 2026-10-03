@@ -3,491 +3,515 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Auralis</title>
-<meta name="description" content="On-device push-to-talk dictation for Windows. Hold Ctrl+Space, speak, release — cleaned-up text lands in whatever app has focus. No cloud STT, no telemetry." />
+<title>Auralis — dictation that never leaves your PC</title>
+<meta name="description" content="Open-source, on-device push-to-talk dictation for Windows. Hold Ctrl+Space, speak, release. Cleaned-up text is typed into whatever app has focus. No cloud, no telemetry." />
+<meta name="theme-color" content="#0c0d10" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #0b0d10;
-    --bg-raised: #11151a;
-    --bg-sunken: #070909;
-    --border: #222a33;
-    --border-bright: #303d4a;
-    --text: #e7ecf1;
-    --text-dim: #9aa7b4;
-    --text-faint: #697684;
-    --accent: #5eead4;
-    --accent-dim: #2dd4bf;
-    --warn: #fbbf24;
-    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
-    --maxw: 1080px;
+    --ink: #0c0d10;
+    --ink-2: #14161b;
+    --ink-3: #1d2027;
+    --rule: #2a2e37;
+    --text: #e6e7ea;
+    --dim: #a3a7b1;
+    --faint: #7d818c;
+    --sub: #f2d14b;
+    --sub-ink: #15130a;
+    --danger: #ff8a7a;
+    --display: "Archivo", "Arial Narrow", Arial, sans-serif;
+    --body: "Archivo", system-ui, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    --maxw: 1180px;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   * { box-sizing: border-box; }
-
-  html { scroll-behavior: smooth; }
-
+  html { scroll-behavior: smooth; scrollbar-color: var(--rule) var(--ink); }
   body {
     margin: 0;
-    background: var(--bg);
+    background: var(--ink);
     color: var(--text);
-    font-family: var(--sans);
-    line-height: 1.6;
+    font: 400 17px/1.6 var(--body);
     -webkit-font-smoothing: antialiased;
   }
+  ::selection { background: var(--sub); color: var(--sub-ink); }
+  a { color: inherit; text-decoration-color: var(--faint); text-underline-offset: 0.22em; }
+  a:hover { text-decoration-color: var(--sub); }
+  :focus-visible { outline: 2px solid var(--sub); outline-offset: 3px; border-radius: 2px; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+  code, pre { font-family: var(--mono); }
 
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
+  header { border-bottom: 1px solid var(--rule); }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 24px; }
+  .brand { font: 800 20px/1 var(--display); font-stretch: 115%; letter-spacing: -0.01em; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+  .brand i { width: 10px; height: 10px; background: var(--sub); border-radius: 50%; display: block; }
+  .links { display: flex; gap: 26px; font-size: 15px; color: var(--dim); }
+  .links a { text-decoration: none; }
+  .links a:hover { color: var(--text); }
 
-  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 16px; }
-
-  header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: rgba(11, 13, 16, 0.85);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--border);
-  }
-  .nav { display: flex; align-items: center; gap: 24px; height: 56px; }
-  .brand {
-    font-family: var(--mono);
-    font-weight: 600;
-    font-size: 15px;
-    letter-spacing: 0.02em;
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    gap: 9px;
-  }
-  .brand:hover { text-decoration: none; }
-  .brand .dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 10px var(--accent);
-    flex: none;
-  }
-  .nav .links { display: flex; gap: 20px; margin-left: auto; font-size: 14px; }
-  .nav .links a { color: var(--text-dim); }
-  .nav .links a:hover { color: var(--text); text-decoration: none; }
-  @media (max-width: 680px) { .nav .links a.opt { display: none; } }
-
-  .hero { padding: 72px 0 56px; border-bottom: 1px solid var(--border); }
-  .eyebrow {
-    font-family: var(--mono);
-    font-size: 12px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--accent-dim);
-    margin-bottom: 18px;
-  }
+  .hero { padding: 72px 0 56px; }
   h1 {
-    font-size: clamp(32px, 6vw, 52px);
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-    margin: 0 0 20px;
-    font-weight: 650;
+    font-family: var(--display); font-weight: 800; font-size: clamp(48px, 9vw, 112px); line-height: 0.94;
+    font-stretch: 112%;
+    letter-spacing: -0.035em;
+    margin: 0 0 28px;
+    text-wrap: balance;
   }
-  .lede { font-size: clamp(16px, 2.2vw, 19px); color: var(--text-dim); max-width: 60ch; margin: 0 0 14px; }
-  .lede strong { color: var(--text); font-weight: 600; }
-  .kbd {
-    font-family: var(--mono);
-    font-size: 0.88em;
-    background: var(--bg-raised);
-    border: 1px solid var(--border-bright);
-    border-bottom-width: 2px;
-    border-radius: 5px;
-    padding: 2px 7px;
-    color: var(--text);
-    white-space: nowrap;
-  }
-  .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+  .hero-sub { max-width: 52ch; color: var(--dim); font-size: 19px; margin: 0 0 32px; }
+  .hero-sub strong { color: var(--text); font-weight: 600; }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-bottom: 52px; }
+
   .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-size: 14px; font-weight: 550;
-    padding: 10px 18px; border-radius: 7px;
-    border: 1px solid var(--border-bright);
-    background: var(--bg-raised);
-    color: var(--text);
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 16px 28px;
+    background: var(--sub); color: var(--sub-ink);
+    font: 700 17px/1 var(--display); font-stretch: 108%;
+    text-decoration: none;
+    border-radius: 3px;
+    transition: transform 0.25s var(--ease), background 0.2s;
   }
-  .btn:hover { border-color: var(--accent-dim); text-decoration: none; }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #06231f; }
-  .btn.primary:hover { background: var(--accent-dim); }
+  .btn:hover { transform: translateY(-2px); background: #f7dd6b; }
+  .btn:active { transform: translateY(0); }
+  .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--rule); }
+  .btn.ghost:hover { background: var(--ink-2); border-color: var(--faint); }
+  .btn svg { width: 18px; height: 18px; }
+  .meta { font: 400 13px/1.5 var(--mono); color: var(--dim); }
+  .meta strong { color: var(--text); font-weight: 600; }
 
-  .pipeline {
-    margin-top: 44px;
-    padding: 22px;
-    background: var(--bg-sunken);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow-x: auto;
+  .frame {
+    position: relative;
+    aspect-ratio: 2.39 / 1;
+    min-height: 260px;
+    background: #050506;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
   }
-  .pipeline-row { display: flex; align-items: center; gap: 0; min-width: 640px; }
-  .stage {
-    flex: 1;
+  .frame::before, .frame::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 9%; background: #000; z-index: 2;
+  }
+  .frame::before { top: 0; }
+  .frame::after { bottom: 0; }
+  .hud { position: absolute; z-index: 3; left: 24px; right: 24px; top: 14%; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+  .state { font: 600 13px/1 var(--mono); color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; display: flex; align-items: center; gap: 9px; transition: color 0.3s; }
+  .state::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--faint); transition: background 0.3s; }
+  .frame[data-phase="listen"] .state { color: var(--danger); }
+  .frame[data-phase="listen"] .state::before { background: var(--danger); animation: blink 1s steps(2, jump-none) infinite; }
+  .frame[data-phase="type"] .state, .frame[data-phase="fix"] .state { color: var(--sub); }
+  .frame[data-phase="type"] .state::before, .frame[data-phase="fix"] .state::before { background: var(--sub); }
+  @keyframes blink { 50% { opacity: 0.2; } }
+  .keys { display: flex; gap: 8px; align-items: center; font: 600 13px/1 var(--mono); color: var(--faint); }
+  .key {
+    padding: 8px 12px; border: 1px solid var(--rule); border-bottom-width: 3px; border-radius: 4px;
+    background: var(--ink-2); color: var(--dim); transition: background 0.15s, color 0.15s, transform 0.15s, border-color 0.15s;
+  }
+  .frame[data-phase="listen"] .key { background: var(--sub); color: var(--sub-ink); border-color: #b99a22; transform: translateY(2px); }
+  .heard {
+    position: absolute; z-index: 3; left: 24px; right: 24px; top: 38%;
+    font: 400 15px/1.4 var(--mono); color: var(--faint); min-height: 22px;
+  }
+  .heard b { color: var(--dim); font-weight: 400; }
+  .caption {
+    position: absolute; z-index: 3; left: 6%; right: 6%; bottom: 16%;
     text-align: center;
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    padding: 11px 6px;
-    border: 1px solid var(--border-bright);
-    border-radius: 6px;
-    background: var(--bg-raised);
-    color: var(--text);
+    font: 600 clamp(20px, 3.4vw, 40px)/1.25 var(--body);
+    color: var(--sub);
+    text-shadow: 0 2px 0 #000, 0 0 3px #000, 2px 0 0 #000, -2px 0 0 #000;
+    min-height: 1.25em;
+    text-wrap: balance;
   }
-  .stage span { display: block; color: var(--text-faint); font-size: 10px; letter-spacing: 0; margin-top: 3px; }
-  .arrow { color: var(--accent-dim); padding: 0 8px; font-size: 13px; flex: none; }
-  .pipeline-note { font-size: 13px; color: var(--text-faint); margin: 16px 0 0; }
+  .caret { display: inline-block; width: 0.08em; height: 0.95em; background: var(--sub); vertical-align: -0.1em; margin-left: 3px; animation: blink 0.9s steps(2, jump-none) infinite; }
+  .tc { position: absolute; z-index: 3; right: 24px; bottom: 11%; font: 400 12px/1 var(--mono); color: var(--faint); }
+  .frame-note { margin: 12px 0 0; font: 400 13px/1.5 var(--mono); color: var(--faint); }
 
-  section { padding: 56px 0; border-bottom: 1px solid var(--border); }
-  h2 {
-    font-size: 13px; font-family: var(--mono); font-weight: 600;
-    letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--accent-dim); margin: 0 0 8px;
-  }
-  .section-lede { font-size: 22px; letter-spacing: -0.01em; margin: 0 0 28px; max-width: 54ch; font-weight: 550; }
+  section { padding: 96px 0; border-top: 1px solid var(--rule); }
+  h2 { font-family: var(--display); font-weight: 800; font-size: clamp(32px, 5vw, 56px); line-height: 1.02; font-stretch: 108%; letter-spacing: -0.03em; margin: 0 0 18px; text-wrap: balance; }
+  .lede { font-size: 20px; color: var(--dim); max-width: 56ch; margin: 0 0 48px; }
+  h3 { font: 700 20px/1.2 var(--display); font-stretch: 105%; margin: 0 0 8px; letter-spacing: -0.01em; }
+  p { margin: 0 0 16px; }
 
-  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); }
-  .card {
-    padding: 18px;
-    background: var(--bg-raised);
-    border: 1px solid var(--border);
-    border-radius: 9px;
-  }
-  .card h3 { margin: 0 0 7px; font-size: 15px; font-weight: 600; }
-  .card p { margin: 0; font-size: 14px; color: var(--text-dim); }
-  .card code { font-family: var(--mono); font-size: 0.9em; color: var(--accent); }
+  .track { display: grid; grid-template-columns: 1fr 1fr 1.3fr 2fr 1.4fr 1.2fr; gap: 3px; margin-bottom: 40px; }
+  .seg { background: var(--ink-3); padding: 14px 14px 16px; min-height: 120px; display: flex; flex-direction: column; justify-content: space-between; transition: background 0.25s; }
+  .seg:hover { background: #262a33; }
+  .seg:nth-child(4) { background: var(--sub); color: var(--sub-ink); }
+  .seg:nth-child(4):hover { background: #f7dd6b; }
+  .seg .t { font: 400 11px/1 var(--mono); color: var(--faint); }
+  .seg:nth-child(4) .t { color: #5e5217; }
+  .seg .n { font: 700 18px/1.1 var(--display); font-stretch: 108%; }
+  .seg .d { font-size: 13px; color: var(--dim); line-height: 1.35; margin-top: 6px; }
+  .seg:nth-child(4) .d { color: #3a3411; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 40px; }
+  .facts p { color: var(--dim); }
 
-  .table-scroll { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 520px; }
-  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
-  th {
-    font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
-    text-transform: uppercase; color: var(--text-faint); font-weight: 600;
-  }
-  td code { font-family: var(--mono); color: var(--accent); font-size: 0.92em; }
-  td.y { color: var(--accent); }
-  td.n { color: var(--text-faint); }
-  .table-note { font-size: 13px; color: var(--text-faint); margin: 14px 0 0; }
-
-  .phase { margin-bottom: 22px; }
-  .phase h3 {
-    font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
-    color: var(--text); margin: 0 0 9px; font-weight: 600;
-  }
-  ul.checks { list-style: none; padding: 0; margin: 0; font-size: 14px; }
-  ul.checks li { padding: 3px 0 3px 25px; position: relative; color: var(--text-dim); }
-  ul.checks li::before {
-    position: absolute; left: 0; font-family: var(--mono); font-size: 12px;
-  }
-  ul.checks li.done::before { content: "✓"; color: var(--accent); }
-  ul.checks li.todo::before { content: "○"; color: var(--text-faint); }
-  ul.checks li.todo { color: var(--text-faint); }
+  .modes { border-top: 1px solid var(--rule); }
+  .mode { display: grid; grid-template-columns: 150px 1fr 1.3fr; gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--rule); align-items: baseline; }
+  .mode .name { font: 600 14px/1 var(--mono); color: var(--sub); text-transform: uppercase; letter-spacing: 0.06em; }
+  .mode .what { color: var(--dim); font-size: 15px; }
+  .mode .out { font: 400 15px/1.4 var(--mono); color: var(--text); }
+  .modes-head { display: grid; grid-template-columns: 150px 1fr 1.3fr; gap: 24px; padding: 0 0 12px; font: 400 12px/1 var(--mono); color: var(--faint); }
+  .modes-note { font: 400 13px/1.6 var(--mono); color: var(--faint); margin-top: 18px; }
 
   pre {
-    background: var(--bg-sunken);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-    overflow-x: auto;
-    font-family: var(--mono);
-    font-size: 13px;
-    line-height: 1.65;
-    margin: 0 0 14px;
-    color: var(--text);
+    background: #07080a; border: 1px solid var(--rule); border-radius: 4px;
+    padding: 20px 22px; overflow-x: auto; font-size: 14px; line-height: 1.75; margin: 0 0 18px; color: var(--text);
   }
-  pre .c { color: var(--text-faint); }
-  pre .k { color: var(--accent); }
+  pre .m { color: var(--faint); }
+  pre .y { color: var(--sub); }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
 
-  .callout {
-    border-left: 2px solid var(--warn);
-    background: rgba(251, 191, 36, 0.05);
-    padding: 13px 16px;
-    border-radius: 0 7px 7px 0;
-    font-size: 14px;
-    color: var(--text-dim);
-    margin: 0;
+  .download { background: var(--sub); color: var(--sub-ink); border-top: 0; }
+  .download h2 { color: var(--sub-ink); }
+  .download .lede { color: #3a3411; }
+  .download ::selection { background: var(--sub-ink); color: var(--sub); }
+  .download .dl { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; margin-bottom: 40px; }
+  .btn.dark { background: var(--sub-ink); color: var(--sub); font-size: 20px; padding: 20px 34px; }
+  .btn.dark:hover { background: #000; }
+  .download .meta { color: #3a3411; }
+  .download .meta strong { color: var(--sub-ink); }
+  .download :focus-visible { outline-color: var(--sub-ink); }
+  .steps { margin: 0 0 32px; padding: 0; list-style: none; counter-reset: s; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 28px; }
+  .steps li { counter-increment: s; font-size: 16px; line-height: 1.5; color: #2b270e; }
+  .steps li::before { content: counter(s); display: block; font: 800 44px/1 var(--display); font-stretch: 115%; margin-bottom: 8px; color: var(--sub-ink); }
+  .kbd { font: 600 0.85em/1 var(--mono); padding: 3px 7px; border: 1px solid currentColor; border-radius: 3px; white-space: nowrap; }
+  .smart { max-width: 70ch; font-size: 15px; color: #2b270e; margin: 0; padding-top: 22px; border-top: 1px solid rgba(21, 19, 10, 0.3); }
+  .smart strong { color: var(--sub-ink); }
+
+  .status { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; }
+  .status h3 { font: 600 13px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); margin-bottom: 18px; }
+  ul.list { list-style: none; margin: 0; padding: 0; }
+  ul.list li { padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 16px; color: var(--dim); display: flex; gap: 14px; }
+  ul.list li b { font: 600 12px/1.9 var(--mono); color: var(--sub); flex: none; width: 52px; }
+  ul.list.todo li b { color: var(--faint); }
+  .honest { margin-top: 40px; max-width: 66ch; color: var(--dim); padding: 20px 22px; background: var(--ink-2); border-radius: 4px; font-size: 16px; }
+  .honest strong { color: var(--text); }
+
+  .oss-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 40px; margin-bottom: 40px; }
+  .oss-grid p { color: var(--dim); }
+  .oss-links { display: flex; flex-wrap: wrap; gap: 12px; }
+
+  footer { border-top: 1px solid var(--rule); padding: 36px 0 56px; color: var(--faint); font-size: 14px; }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+
+  @media (max-width: 860px) {
+    .links .opt { display: none; }
+    .track { grid-template-columns: 1fr 1fr; }
+    .seg { min-height: 96px; }
+    .mode { grid-template-columns: 1fr; gap: 6px; }
+    .modes-head { display: none; }
+    .split, .status { grid-template-columns: 1fr; gap: 32px; }
+    .frame { aspect-ratio: 16 / 10; }
+    .hud { top: 13%; }
+    .heard { top: 36%; }
+    .keys { display: none; }
+    section { padding: 64px 0; }
+    .hero { padding: 44px 0 40px; }
   }
-  .callout strong { color: var(--text); }
-
-  .dl {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
-    padding: 24px; margin: 0 0 18px;
-    background: var(--bg-raised); border: 1px solid var(--border-bright); border-radius: 10px;
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .btn, .seg, .key { transition: none; }
+    .caret, .state::before { animation: none !important; }
   }
-  .dl .meta { font-family: var(--mono); font-size: 13px; color: var(--text-dim); }
-  .dl .meta strong { color: var(--text); }
-  .steps { margin: 0 0 18px; padding-left: 20px; color: var(--text-dim); font-size: 14px; }
-  .steps li { padding: 2px 0; }
-  .oss-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
-
-  footer { padding: 36px 0 48px; font-size: 13px; color: var(--text-faint); }
-  footer a { color: var(--text-dim); }
 </style>
 </head>
 <body>
 
 <header>
   <div class="wrap nav">
-    <a class="brand" href="#top"><span class="dot"></span>AURALIS</a>
-    <nav class="links">
-      <a href="#how">How it works</a>
+    <a class="brand" href="#top"><i></i>Auralis</a>
+    <nav class="links" aria-label="Primary">
+      <a href="#how" class="opt">How it works</a>
       <a href="#modes" class="opt">Modes</a>
-      <a href="#status" class="opt">Status</a>
+      <a href="#api" class="opt">API</a>
       <a href="#download">Download</a>
-      <a href="#contribute" class="opt">Contribute</a>
       <a href="https://github.com/Sagexd08/Auralis">GitHub</a>
     </nav>
   </div>
 </header>
 
 <main id="top">
-
   <div class="wrap hero">
-    <div class="eyebrow">Open speech stack · runs on your machine</div>
-    <h1>Speech infrastructure you can run anywhere.</h1>
-    <p class="lede">
-      Hold <span class="kbd">Ctrl</span>&nbsp;+&nbsp;<span class="kbd">Space</span>, speak, release —
-      cleaned-up transcribed text is inserted into whatever application currently has focus.
-      Or tap <span class="kbd">Ctrl</span>&nbsp;+&nbsp;<span class="kbd">Shift</span>&nbsp;+&nbsp;<span class="kbd">Space</span>
-      for hands-free continuous dictation.
+    <h1>Say it.<br />It’s typed.</h1>
+    <p class="hero-sub">
+      Hold <span class="kbd">Ctrl</span> + <span class="kbd">Space</span>, speak, release. Clean text lands in whatever app has focus.
+      <strong>Everything runs on your PC.</strong> No cloud speech-to-text, no telemetry. Free and open source.
     </p>
-    <p class="lede">
-      <strong>Entirely on-device.</strong> No cloud speech-to-text, no cloud text cleanup, no telemetry.
-    </p>
-
-    <div class="cta">
-      <a class="btn primary" href="#download">Download for Windows</a>
-      <a class="btn" href="https://github.com/Sagexd08/Auralis">View source</a>
+    <div class="actions">
+      <a class="btn" id="dl-btn-hero" href="https://github.com/Sagexd08/Auralis/releases/latest">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M3.5 16.5h13"/></svg>
+        Download for Windows
+      </a>
+      <a class="btn ghost" href="https://github.com/Sagexd08/Auralis">View source</a>
+      <span class="meta" id="dl-meta-hero">Windows 10 and 11 · MIT licensed</span>
     </div>
 
-    <div class="pipeline" aria-label="Processing pipeline">
-      <div class="pipeline-row">
-        <div class="stage">MIC<span>cpal</span></div>
-        <div class="arrow">→</div>
-        <div class="stage">VAD<span>webrtc-vad</span></div>
-        <div class="arrow">→</div>
-        <div class="stage">DENOISE<span>RNNoise</span></div>
-        <div class="arrow">→</div>
-        <div class="stage">STT<span>whisper.cpp</span></div>
-        <div class="arrow">→</div>
-        <div class="stage">CLEANUP<span>local rules</span></div>
-        <div class="arrow">→</div>
-        <div class="stage">INSERT<span>keystrokes</span></div>
+    <div class="frame" id="frame" data-phase="idle" role="img" aria-label="Demonstration: a spoken sentence is typed as a caption, then a spoken correction retypes it in place.">
+      <div class="hud">
+        <span class="state" id="state">Idle</span>
+        <span class="keys" aria-hidden="true"><span class="key">Ctrl</span>+<span class="key">Space</span></span>
       </div>
-      <p class="pipeline-note">
-        Every stage runs locally. Audio is processed and discarded — nothing is written to disk or sent anywhere.
-      </p>
+      <div class="heard" id="heard" aria-hidden="true"></div>
+      <div class="caption" id="caption" aria-live="off"></div>
+      <div class="tc" id="tc" aria-hidden="true">00:00:00:00</div>
     </div>
+    <p class="frame-note">Demonstration with sample sentences. The correction retypes the whole line in place, as the app does.</p>
   </div>
 
   <section id="how">
     <div class="wrap">
-      <h2>How it works</h2>
-      <p class="section-lede">A reusable Rust pipeline, driven by a tray-only desktop shell.</p>
-      <div class="grid">
-        <div class="card">
-          <h3>Capture &amp; resample</h3>
-          <p>Default input device via <code>cpal</code>, mixed to mono and resampled with a sinc interpolator to the rates each stage needs.</p>
-        </div>
-        <div class="card">
-          <h3>Voice activity detection</h3>
-          <p><code>webrtc-vad</code> trims leading and trailing silence, and segments continuous speech into utterances on a trailing-silence boundary.</p>
-        </div>
-        <div class="card">
-          <h3>Denoising</h3>
-          <p>RNNoise via <code>nnnoiseless</code> — pure Rust, no native dependency, operating on the same 10&nbsp;ms frames as the VAD.</p>
-        </div>
-        <div class="card">
-          <h3>Transcription</h3>
-          <p>whisper.cpp through <code>whisper-rs</code> on quantized GGUF weights. Beam search with temperature fallback, and <code>no_context</code> to suppress repetition loops.</p>
-        </div>
-        <div class="card">
-          <h3>Text intelligence</h3>
-          <p>Local rules only — capitalization, terminal punctuation, conservative disfluency removal, and a spoken-correction heuristic.</p>
-        </div>
-        <div class="card">
-          <h3>Insertion</h3>
-          <p>Simulated keystrokes via <code>enigo</code>, with a clipboard fallback. The app never takes focus, so keystrokes land where you were typing.</p>
-        </div>
+      <h2>Six stages, all local.</h2>
+      <p class="lede">Audio never leaves the machine. Each stage is a small, replaceable part of an open Rust runtime.</p>
+      <div class="track" role="list">
+        <div class="seg" role="listitem"><span class="t">IN</span><div><div class="n">Mic</div><div class="d">cpal, default or chosen device</div></div></div>
+        <div class="seg" role="listitem"><span class="t">TRIM</span><div><div class="n">VAD</div><div class="d">drops leading and trailing silence</div></div></div>
+        <div class="seg" role="listitem"><span class="t">CLEAN</span><div><div class="n">Denoise</div><div class="d">RNNoise, pure Rust</div></div></div>
+        <div class="seg" role="listitem"><span class="t">SPEECH → TEXT</span><div><div class="n">Whisper</div><div class="d">whisper.cpp, quantized weights, beam search with temperature fallback</div></div></div>
+        <div class="seg" role="listitem"><span class="t">RULES</span><div><div class="n">Cleanup</div><div class="d">four modes, spoken corrections</div></div></div>
+        <div class="seg" role="listitem"><span class="t">OUT</span><div><div class="n">Insert</div><div class="d">keystrokes, clipboard fallback</div></div></div>
       </div>
-      <p class="pipeline-note">
-        The pipeline lives in <code style="font-family:var(--mono);color:var(--accent)">runtime/core</code> as a standalone library, independent of the
-        desktop shell — so it can be driven by a benchmark runner or another front end.
-      </p>
+      <div class="facts">
+        <div><h3>Hold or tap</h3><p>Hold <span class="kbd">Ctrl</span> + <span class="kbd">Space</span> for push-to-talk. Tap <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">Space</span> for hands-free dictation that splits on pauses.</p></div>
+        <div><h3>Fix it by voice</h3><p>Say “actually, change Rahul to Rohan” and Auralis backspaces what it typed and retypes the corrected sentence. Corrections expire after 45 seconds so they never eat unrelated text.</p></div>
+        <div><h3>Pick your accuracy</h3><p>Start with the 59&nbsp;MB base model. Switch to small or medium in Settings for better names and accents, at a higher CPU cost.</p></div>
+      </div>
     </div>
   </section>
 
   <section id="modes">
     <div class="wrap">
-      <h2>Text cleanup modes</h2>
-      <p class="section-lede">How much the text layer is allowed to rewrite what you actually said.</p>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr><th>Mode</th><th>Disfluencies removed</th><th>Capitalized</th><th>Terminal punctuation</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><code>raw</code></td><td class="n">no</td><td class="n">no</td><td class="n">no</td></tr>
-            <tr><td><code>clean</code> <span style="color:var(--text-faint)">(default)</span></td><td class="n">no</td><td class="y">yes</td><td class="y">yes</td></tr>
-            <tr><td><code>polished</code></td><td class="y">yes</td><td class="y">yes</td><td class="y">yes</td></tr>
-            <tr><td><code>developer</code></td><td class="y">yes</td><td class="n">no</td><td class="n">no</td></tr>
-          </tbody>
-        </table>
+      <h2>You choose how much it rewrites.</h2>
+      <p class="lede">Four cleanup modes, switchable at any time. Raw shows exactly what the model heard.</p>
+      <div class="modes">
+        <div class="modes-head"><span>MODE</span><span>WHAT IT DOES</span><span>“uh git checkout main” BECOMES</span></div>
+        <div class="mode"><span class="name">raw</span><span class="what">Nothing. The model’s output, trimmed.</span><span class="out">uh git checkout main</span></div>
+        <div class="mode"><span class="name">clean</span><span class="what">Capital letter and a terminal mark.</span><span class="out">Uh git checkout main.</span></div>
+        <div class="mode"><span class="name">polished</span><span class="what">Clean, plus drops “uh”, “um”, “erm”.</span><span class="out">Git checkout main.</span></div>
+        <div class="mode"><span class="name">developer</span><span class="what">Drops fillers, adds no capital or period.</span><span class="out">git checkout main</span></div>
       </div>
-      <p class="table-note">
-        <code style="font-family:var(--mono);color:var(--accent)">raw</code> is always available, so a transcript can be inspected with no rules in the way.
-        <code style="font-family:var(--mono);color:var(--accent)">developer</code> exists because dictating a shell command should not acquire a trailing period.
-        Disfluency matching is deliberately conservative — only tokens that are not also ordinary English words, so
-        “summary”, “ahead” and “error” survive while a standalone “um” does not.
-      </p>
+      <p class="modes-note">Real rules from the text layer. Words like “like” and “so” are never removed.</p>
+    </div>
+  </section>
+
+  <section id="api">
+    <div class="wrap">
+      <div class="split">
+        <div>
+          <h2>Use it from anything.</h2>
+          <p class="lede" style="margin-bottom:0">The same pipeline runs as a local HTTP server. Send a WAV file, get text back. It binds to loopback only and has no authentication, so it stays on your machine.</p>
+        </div>
+        <div>
+<pre><span class="m">$</span> auralis-server --model models/ggml-base.en-q5_1.bin
+
+<span class="m">$</span> curl --data-binary @meeting.wav \
+    -H <span class="y">"Content-Type: audio/wav"</span> \
+    <span class="y">"http://127.0.0.1:8787/v1/transcriptions?cleanup=clean"</span>
+
+{ <span class="y">"text"</span>, <span class="y">"duration_s"</span>, <span class="y">"processing_s"</span>, <span class="y">"model"</span> }</pre>
+          <p class="meta">GET /healthz reports the loaded model.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="download" class="download">
+    <div class="wrap">
+      <h2>Download Auralis.</h2>
+      <p class="lede">Windows 10 and 11. Free, open source, and nothing to sign up for.</p>
+      <div class="dl">
+        <a class="btn dark" id="dl-btn" href="https://github.com/Sagexd08/Auralis/releases/latest">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M3.5 16.5h13"/></svg>
+          Download installer
+        </a>
+        <span class="meta" id="dl-meta">Latest release on GitHub</span>
+      </div>
+      <ol class="steps">
+        <li>Run the installer. It installs for your user and needs no administrator rights.</li>
+        <li>Auralis starts in the tray and downloads its speech model, about 59&nbsp;MB, on first launch.</li>
+        <li>Hold <span class="kbd">Ctrl</span> + <span class="kbd">Space</span> in any app, speak, release.</li>
+      </ol>
+      <p class="smart"><strong>Windows may show a SmartScreen warning.</strong> Installers are not code-signed yet, so choose “More info”, then “Run anyway”. The installer is built from this repository by a public workflow, and every line is open to inspect.</p>
     </div>
   </section>
 
   <section id="status">
     <div class="wrap">
-      <h2>Status</h2>
-      <p class="section-lede">What exists today, and what deliberately does not.</p>
-
-      <div class="phase">
-        <h3>Phase 1 — vertical slice</h3>
-        <ul class="checks">
-          <li class="done">Mic capture, resampling, VAD trimming, RNNoise denoising</li>
-          <li class="done">whisper.cpp transcription and local text cleanup</li>
-          <li class="done">Tauri desktop app, global hotkey, keystroke injection</li>
-          <li class="done">Manual end-to-end verification on a live microphone</li>
-        </ul>
+      <h2>What works, and what doesn’t yet.</h2>
+      <p class="lede">No marketing rounding. This is the actual state of the project.</p>
+      <div class="status">
+        <div>
+          <h3>Working</h3>
+          <ul class="list">
+            <li><b>done</b>Push-to-talk and hands-free dictation</li>
+            <li><b>done</b>Spoken corrections that retype in place</li>
+            <li><b>done</b>Tray app, settings, model downloads on first run</li>
+            <li><b>done</b>Four text cleanup modes, audio quality analysis</li>
+            <li><b>done</b>Local transcription API</li>
+            <li><b>done</b>WER, CER and speed benchmark harness</li>
+            <li><b>done</b>Installer built by release automation</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Not yet</h3>
+          <ul class="list todo">
+            <li><b>todo</b>Code-signed installer</li>
+            <li><b>todo</b>GPU builds verified on real hardware</li>
+            <li><b>todo</b>Published benchmark numbers</li>
+            <li><b>todo</b>macOS and Linux</li>
+            <li><b>todo</b>Streaming API over WebSocket</li>
+          </ul>
+        </div>
       </div>
-
-      <div class="phase">
-        <h3>Phase 2 — measurement</h3>
-        <ul class="checks">
-          <li class="done">WER / CER / RTF benchmark harness with a CLI runner</li>
-        </ul>
-      </div>
-
-      <div class="phase">
-        <h3>Phase 3 — dictation UX</h3>
-        <ul class="checks">
-          <li class="done">Continuous / toggle dictation via VAD stream segmentation</li>
-          <li class="done">Tray icon, settings window, persisted configuration</li>
-          <li class="done">In-place spoken correction of already-inserted text</li>
-          <li class="done">Text cleanup modes and audio quality analysis</li>
-        </ul>
-      </div>
-
-      <div class="phase">
-        <h3>Phase 4 — shipping</h3>
-        <ul class="checks">
-          <li class="done">Continuous integration, brand assets, STT accuracy pass</li>
-          <li class="done">Windows installer built by release automation; models download on first launch</li>
-          <li class="done">GPU build switches for CUDA and Vulkan — the CPU build needs no toolkit</li>
-          <li class="done">Local transcription API: <code>POST /v1/transcriptions</code></li>
-          <li class="todo">Code-signed installer — pending a signing certificate</li>
-        </ul>
-      </div>
-
-      <p class="callout">
-        <strong>No benchmark numbers are published yet.</strong> The harness exists and measures
-        WER, CER and real-time factor across model size, preprocessing variant and dataset — but
-        running it on a real corpus is still outstanding, so there is nothing honest to quote here.
-        Accuracy claims will arrive with the commands used to produce them.
-      </p>
-    </div>
-  </section>
-
-  <section id="download">
-    <div class="wrap">
-      <h2>Download</h2>
-      <p class="section-lede">Windows 10 and 11. Free and open source.</p>
-
-      <div class="dl">
-        <a class="btn primary" id="dl-btn" href="https://github.com/Sagexd08/Auralis/releases/latest">Download installer</a>
-        <div class="meta" id="dl-meta">Latest release on GitHub</div>
-      </div>
-
-      <ol class="steps">
-        <li>Run the installer. It installs for your user and needs no administrator rights.</li>
-        <li>Auralis starts in the system tray and downloads its speech model (about 59&nbsp;MB) on first launch.</li>
-        <li>Hold <span class="kbd">Ctrl</span>&nbsp;+&nbsp;<span class="kbd">Space</span> in any app, speak, release.</li>
-      </ol>
-
-      <p class="callout">
-        <strong>Windows may show a SmartScreen warning.</strong> Installers are not code-signed yet, so choose
-        “More info” then “Run anyway”. You can verify what you are running — the installer is built from this
-        repository by a public workflow, and every line is open to inspect.
-      </p>
+      <p class="honest"><strong>No accuracy numbers are published yet.</strong> The harness measures word error rate, character error rate and real-time factor across model size and preprocessing. Running it on a real corpus is still outstanding, so there is nothing honest to quote. Claims will arrive with the commands that produced them.</p>
     </div>
   </section>
 
   <section id="install">
     <div class="wrap">
-      <h2>Build from source</h2>
-      <p class="section-lede">For contributors, or to run the latest commit.</p>
-<pre><span class="c"># Clone and fetch a model</span>
-git clone https://github.com/Sagexd08/Auralis
-<span class="k">cd</span> Auralis
-powershell -File models/pull-model.ps1          <span class="c"># base.en  (~59 MB)</span>
-powershell -File models/pull-model.ps1 small.en <span class="c"># better accuracy, ~3x decode cost</span>
+      <div class="split">
+        <div>
+          <h2>Build it yourself.</h2>
+          <p class="lede" style="margin-bottom:0">For contributors, or to run the latest commit. Needs Rust, Node.js 20+, CMake, and a libclang that works with bindgen 0.69, because whisper.cpp is compiled from source. The README covers the libclang caveat.</p>
+        </div>
+        <div>
+<pre><span class="m">git</span> clone https://github.com/Sagexd08/Auralis
+<span class="m">cd</span> Auralis
+powershell -File models/pull-model.ps1
 
-<span class="c"># Rust library and tests</span>
-cargo test -p auralis-runtime
+cargo test -p auralis-runtime -p auralis-desktop
 
-<span class="c"># Desktop app</span>
-<span class="k">cd</span> apps/desktop
+<span class="m">cd</span> apps/desktop
 npm install
 npm run tauri dev</pre>
-      <p class="table-note">
-        Requires Rust (stable, <code style="font-family:var(--mono);color:var(--accent)">x86_64-pc-windows-msvc</code>), Node.js, CMake, and a
-        <code style="font-family:var(--mono);color:var(--accent)">libclang</code> compatible with bindgen 0.69 — whisper.cpp is compiled from source.
-        A CUDA Toolkit is only needed for GPU acceleration. See the repository README for the
-        <code style="font-family:var(--mono);color:var(--accent)">libclang</code> version caveat.
-      </p>
+        </div>
+      </div>
     </div>
   </section>
 
   <section id="contribute">
     <div class="wrap">
-      <h2>Open source</h2>
-      <p class="section-lede">Auralis is built in the open. Use it, fork it, improve it.</p>
-      <div class="grid">
-        <div class="card"><h3>Read the code</h3><p>A reusable Rust runtime (<code>runtime/core</code>), a Tauri desktop app, and a benchmark harness — each usable on its own.</p></div>
-        <div class="card"><h3>Pick up an issue</h3><p>Good first areas: new text cleanup rules, hotkey handling, benchmark datasets, macOS and Linux support.</p></div>
-        <div class="card"><h3>Measure, don’t guess</h3><p>Accuracy changes should come with benchmark numbers from the harness in <code>benchmarks/</code>.</p></div>
+      <h2>Built in the open.</h2>
+      <p class="lede">MIT licensed. Use it, fork it, make it better.</p>
+      <div class="oss-grid">
+        <div><h3>Read the code</h3><p>A reusable Rust runtime, a Tauri desktop app, and a benchmark harness. Each works on its own.</p></div>
+        <div><h3>Pick up an issue</h3><p>Good places to start: text cleanup rules, hotkey handling, benchmark datasets, macOS and Linux support.</p></div>
+        <div><h3>Measure, don’t guess</h3><p>Accuracy and speed changes should come with before and after numbers from the harness.</p></div>
       </div>
       <div class="oss-links">
-        <a class="btn primary" href="https://github.com/Sagexd08/Auralis/blob/main/CONTRIBUTING.md">Contributing guide</a>
-        <a class="btn" href="https://github.com/Sagexd08/Auralis/issues">Open issues</a>
-        <a class="btn" href="https://github.com/Sagexd08/Auralis">Star on GitHub</a>
+        <a class="btn" href="https://github.com/Sagexd08/Auralis/blob/main/CONTRIBUTING.md">Contributing guide</a>
+        <a class="btn ghost" href="https://github.com/Sagexd08/Auralis/issues">Open issues</a>
+        <a class="btn ghost" href="https://github.com/Sagexd08/Auralis">Star on GitHub</a>
       </div>
     </div>
   </section>
-
 </main>
 
 <footer>
   <div class="wrap">
-    Auralis — open speech intelligence, built to run anywhere.
-    <a href="https://github.com/Sagexd08/Auralis">github.com/Sagexd08/Auralis</a> · <a href="https://github.com/Sagexd08/Auralis/blob/main/LICENSE">MIT licensed</a>
+    <span>Auralis · on-device dictation for Windows</span>
+    <span><a href="https://github.com/Sagexd08/Auralis">github.com/Sagexd08/Auralis</a> · <a href="https://github.com/Sagexd08/Auralis/blob/main/LICENSE">MIT license</a></span>
   </div>
 </footer>
 
 <script>
   (function () {
-    var btn = document.getElementById("dl-btn");
-    var meta = document.getElementById("dl-meta");
+    var buttons = [document.getElementById("dl-btn"), document.getElementById("dl-btn-hero")];
+    var metas = [document.getElementById("dl-meta"), document.getElementById("dl-meta-hero")];
     fetch("https://api.github.com/repos/Sagexd08/Auralis/releases/latest", { headers: { Accept: "application/vnd.github+json" } })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (release) {
         var asset = (release.assets || []).filter(function (a) { return /\.exe$/i.test(a.name); })[0];
-        if (!asset) return;
-        btn.href = asset.browser_download_url;
+        if (!asset) return Promise.reject(0);
+        buttons.forEach(function (b) { b.href = asset.browser_download_url; });
         var mb = (asset.size / 1048576).toFixed(0);
-        meta.innerHTML = "<strong>" + release.tag_name + "</strong> · " + mb + " MB · " + asset.download_count.toLocaleString() + " downloads";
+        var html = "<strong>" + release.tag_name + "</strong> · " + mb + " MB · Windows 10 and 11";
+        metas.forEach(function (m) { m.innerHTML = html; });
       })
       .catch(function () {
-        meta.textContent = "No installer published yet — see the releases page, or build from source below.";
+        document.getElementById("dl-meta").textContent = "No installer published yet. See the releases page, or build from source below.";
       });
+  })();
+
+  (function () {
+    var frame = document.getElementById("frame");
+    var stateEl = document.getElementById("state");
+    var heardEl = document.getElementById("heard");
+    var capEl = document.getElementById("caption");
+    var tcEl = document.getElementById("tc");
+    var first = "Send the report to Rahul tomorrow.";
+    var fixed = "Send the report to Rohan tomorrow.";
+    var spoken = "Actually, change Rahul to Rohan.";
+    var labels = { idle: "Idle", listen: "Listening", type: "Typing", fix: "Correcting" };
+    var timer = null;
+    var frames = 0;
+
+    function phase(name) {
+      frame.setAttribute("data-phase", name);
+      stateEl.textContent = labels[name];
+    }
+    function pad(n) { return n < 10 ? "0" + n : "" + n; }
+    function tick() {
+      frames += 3;
+      var f = frames % 24, s = Math.floor(frames / 24) % 60, m = Math.floor(frames / 1440);
+      tcEl.textContent = "00:" + pad(m) + ":" + pad(s) + ":" + pad(f);
+    }
+    function caret() { return '<span class="caret"></span>'; }
+    function wait(ms) { return new Promise(function (r) { timer = setTimeout(r, ms); }); }
+    function typeInto(text, per) {
+      var i = 0;
+      return new Promise(function (resolve) {
+        (function step() {
+          capEl.innerHTML = text.slice(0, i) + caret();
+          tick();
+          if (i++ < text.length) timer = setTimeout(step, per); else resolve();
+        })();
+      });
+    }
+    function backspace(per) {
+      var text = capEl.textContent;
+      return new Promise(function (resolve) {
+        (function step() {
+          capEl.innerHTML = text + caret();
+          tick();
+          if (text.length-- > 0) timer = setTimeout(step, per); else resolve();
+        })();
+      });
+    }
+
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      phase("type");
+      stateEl.textContent = "Typed";
+      heardEl.innerHTML = "<b>heard:</b> " + spoken;
+      capEl.textContent = fixed;
+      return;
+    }
+
+    async function loop() {
+      for (;;) {
+        capEl.innerHTML = "";
+        heardEl.innerHTML = "";
+        phase("idle");
+        await wait(900);
+        phase("listen");
+        heardEl.innerHTML = "<b>heard:</b> " + first.replace(/\.$/, "") + "…";
+        await wait(1700);
+        phase("type");
+        await typeInto(first, 34);
+        await wait(1300);
+        phase("listen");
+        heardEl.innerHTML = "<b>heard:</b> " + spoken;
+        await wait(1500);
+        phase("fix");
+        await backspace(12);
+        await typeInto(fixed, 34);
+        capEl.innerHTML = fixed + caret();
+        await wait(3200);
+      }
+    }
+
+    loop();
   })();
 </script>
 </body>
