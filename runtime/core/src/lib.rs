@@ -6,6 +6,7 @@ pub mod quality;
 pub mod stt;
 pub mod text;
 pub mod vad;
+pub mod wav;
 
 pub fn crate_version() -> &'static str {
     env!("CARGO_PKG_VERSION")

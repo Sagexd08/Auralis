@@ -217,6 +217,18 @@
   }
   .callout strong { color: var(--text); }
 
+
+  .dl {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
+    padding: 24px; margin: 0 0 18px;
+    background: var(--bg-raised); border: 1px solid var(--border-bright); border-radius: 10px;
+  }
+  .dl .meta { font-family: var(--mono); font-size: 13px; color: var(--text-dim); }
+  .dl .meta strong { color: var(--text); }
+  .steps { margin: 0 0 18px; padding-left: 20px; color: var(--text-dim); font-size: 14px; }
+  .steps li { padding: 2px 0; }
+  .oss-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+
   footer { padding: 36px 0 48px; font-size: 13px; color: var(--text-faint); }
   footer a { color: var(--text-dim); }
 </style>
@@ -230,7 +242,8 @@
       <a href="#how">How it works</a>
       <a href="#modes" class="opt">Modes</a>
       <a href="#status" class="opt">Status</a>
-      <a href="#install">Install</a>
+      <a href="#download">Download</a>
+      <a href="#contribute" class="opt">Contribute</a>
       <a href="https://github.com/Sagexd08/Auralis">GitHub</a>
     </nav>
   </div>
@@ -252,7 +265,7 @@
     </p>
 
     <div class="cta">
-      <a class="btn primary" href="#install">Get started</a>
+      <a class="btn primary" href="#download">Download for Windows</a>
       <a class="btn" href="https://github.com/Sagexd08/Auralis">View source</a>
     </div>
 
@@ -375,8 +388,10 @@
         <h3>Phase 4 — shipping</h3>
         <ul class="checks">
           <li class="done">Continuous integration, brand assets, STT accuracy pass</li>
-          <li class="todo">CUDA acceleration — the CPU build works today</li>
-          <li class="todo">Signed Windows installer and release automation</li>
+          <li class="done">Windows installer built by release automation; models download on first launch</li>
+          <li class="done">GPU build switches for CUDA and Vulkan — the CPU build needs no toolkit</li>
+          <li class="done">Local transcription API: <code>POST /v1/transcriptions</code></li>
+          <li class="todo">Code-signed installer — pending a signing certificate</li>
         </ul>
       </div>
 
@@ -389,10 +404,34 @@
     </div>
   </section>
 
+  <section id="download">
+    <div class="wrap">
+      <h2>Download</h2>
+      <p class="section-lede">Windows 10 and 11. Free and open source.</p>
+
+      <div class="dl">
+        <a class="btn primary" id="dl-btn" href="https://github.com/Sagexd08/Auralis/releases/latest">Download installer</a>
+        <div class="meta" id="dl-meta">Latest release on GitHub</div>
+      </div>
+
+      <ol class="steps">
+        <li>Run the installer. It installs for your user and needs no administrator rights.</li>
+        <li>Auralis starts in the system tray and downloads its speech model (about 59&nbsp;MB) on first launch.</li>
+        <li>Hold <span class="kbd">Ctrl</span>&nbsp;+&nbsp;<span class="kbd">Space</span> in any app, speak, release.</li>
+      </ol>
+
+      <p class="callout">
+        <strong>Windows may show a SmartScreen warning.</strong> Installers are not code-signed yet, so choose
+        “More info” then “Run anyway”. You can verify what you are running — the installer is built from this
+        repository by a public workflow, and every line is open to inspect.
+      </p>
+    </div>
+  </section>
+
   <section id="install">
     <div class="wrap">
-      <h2>Install</h2>
-      <p class="section-lede">Windows, built from source.</p>
+      <h2>Build from source</h2>
+      <p class="section-lede">For contributors, or to run the latest commit.</p>
 <pre><span class="c"># Clone and fetch a model</span>
 git clone https://github.com/Sagexd08/Auralis
 <span class="k">cd</span> Auralis
@@ -415,14 +454,49 @@ npm run tauri dev</pre>
     </div>
   </section>
 
+  <section id="contribute">
+    <div class="wrap">
+      <h2>Open source</h2>
+      <p class="section-lede">Auralis is built in the open. Use it, fork it, improve it.</p>
+      <div class="grid">
+        <div class="card"><h3>Read the code</h3><p>A reusable Rust runtime (<code>runtime/core</code>), a Tauri desktop app, and a benchmark harness — each usable on its own.</p></div>
+        <div class="card"><h3>Pick up an issue</h3><p>Good first areas: new text cleanup rules, hotkey handling, benchmark datasets, macOS and Linux support.</p></div>
+        <div class="card"><h3>Measure, don’t guess</h3><p>Accuracy changes should come with benchmark numbers from the harness in <code>benchmarks/</code>.</p></div>
+      </div>
+      <div class="oss-links">
+        <a class="btn primary" href="https://github.com/Sagexd08/Auralis/blob/main/CONTRIBUTING.md">Contributing guide</a>
+        <a class="btn" href="https://github.com/Sagexd08/Auralis/issues">Open issues</a>
+        <a class="btn" href="https://github.com/Sagexd08/Auralis">Star on GitHub</a>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <footer>
   <div class="wrap">
     Auralis — open speech intelligence, built to run anywhere.
-    <a href="https://github.com/Sagexd08/Auralis">github.com/Sagexd08/Auralis</a>
+    <a href="https://github.com/Sagexd08/Auralis">github.com/Sagexd08/Auralis</a> · <a href="https://github.com/Sagexd08/Auralis/blob/main/LICENSE">MIT licensed</a>
   </div>
 </footer>
 
+<script>
+  (function () {
+    var btn = document.getElementById("dl-btn");
+    var meta = document.getElementById("dl-meta");
+    fetch("https://api.github.com/repos/Sagexd08/Auralis/releases/latest", { headers: { Accept: "application/vnd.github+json" } })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (release) {
+        var asset = (release.assets || []).filter(function (a) { return /\.exe$/i.test(a.name); })[0];
+        if (!asset) return;
+        btn.href = asset.browser_download_url;
+        var mb = (asset.size / 1048576).toFixed(0);
+        meta.innerHTML = "<strong>" + release.tag_name + "</strong> · " + mb + " MB · " + asset.download_count.toLocaleString() + " downloads";
+      })
+      .catch(function () {
+        meta.textContent = "No installer published yet — see the releases page, or build from source below.";
+      });
+  })();
+</script>
 </body>
 </html>

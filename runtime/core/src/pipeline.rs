@@ -15,6 +15,11 @@ const TRAILING_SILENCE_MS: u32 = 700;
 /// re-initializing the sinc resampler on every tiny ~10-20ms capture chunk.
 const CLASSIFY_CHUNK_MS: u64 = 300;
 const VAD_FRAME_SAMPLES_48K: usize = 480;
+/// How long after an utterance a spoken "change X to Y" is still treated as a
+/// correction of it. Past this the user has almost certainly moved on, and
+/// backspacing over unrelated text would destroy their work, so the phrase is
+/// dictated as ordinary text instead.
+pub const CORRECTION_WINDOW: Duration = Duration::from_secs(45);
 
 /// What a finalized utterance should do to the target application's text.
 /// Produced by [`Pipeline`] and consumed by an injection layer that knows how
@@ -34,6 +39,7 @@ pub enum Transcript {
 pub struct Pipeline {
     stt: SttEngine,
     last_transcript: Option<String>,
+    last_transcript_at: Option<Instant>,
     cleanup_mode: CleanupModeHandle,
 }
 
@@ -50,6 +56,7 @@ impl Pipeline {
         Ok(Self {
             stt: SttEngine::load(model_path)?,
             last_transcript: None,
+            last_transcript_at: None,
             cleanup_mode,
         })
     }
@@ -58,16 +65,27 @@ impl Pipeline {
         self.cleanup_mode.get()
     }
 
-    /// Runs one push-to-talk cycle: captures audio from `capture` while `is_held`
-    /// returns true (polled every 20ms), then transcribes the whole held buffer.
-    pub fn run_once(&mut self, capture: &AudioCapture, mut is_held: impl FnMut() -> bool) -> Result<Transcript> {
+    /// Captures audio from `capture` while `is_held` returns true (polled every
+    /// 20ms) and returns the raw native-rate samples. Takes no `self` so a
+    /// caller can record without holding whatever lock guards the pipeline.
+    pub fn record_while(capture: &AudioCapture, mut is_held: impl FnMut() -> bool) -> Vec<f32> {
         let mut raw_samples: Vec<f32> = Vec::new();
         while is_held() {
             raw_samples.extend(capture.drain_available());
             std::thread::sleep(Duration::from_millis(20));
         }
         raw_samples.extend(capture.drain_available());
+        raw_samples
+    }
 
+    /// Transcribes a buffer produced by [`Pipeline::record_while`].
+    pub fn transcribe_recording(&mut self, raw_samples: &[f32], native_rate: u32) -> Result<Transcript> {
+        self.process_utterance(raw_samples, native_rate)
+    }
+
+    /// Runs one push-to-talk cycle: records while `is_held`, then transcribes.
+    pub fn run_once(&mut self, capture: &AudioCapture, is_held: impl FnMut() -> bool) -> Result<Transcript> {
+        let raw_samples = Self::record_while(capture, is_held);
         self.process_utterance(&raw_samples, capture.sample_rate)
     }
 
@@ -179,7 +197,18 @@ impl Pipeline {
             return Ok(Transcript::Empty);
         }
 
-        Ok(Self::classify_output(&mut self.last_transcript, cleaned))
+        if Self::is_stale(self.last_transcript_at, Instant::now()) {
+            self.last_transcript = None;
+        }
+        let transcript = Self::classify_output(&mut self.last_transcript, cleaned);
+        self.last_transcript_at = Some(Instant::now());
+        Ok(transcript)
+    }
+
+    /// Whether the previous utterance is too old to be the target of a
+    /// spoken correction.
+    fn is_stale(last_at: Option<Instant>, now: Instant) -> bool {
+        last_at.is_some_and(|at| now.duration_since(at) > CORRECTION_WINDOW)
     }
 
     /// Pure decision logic, factored out of `process_utterance` so it's
@@ -211,6 +240,15 @@ mod tests {
             let len = (sample_rate as u64 * CLASSIFY_CHUNK_MS / 1000) as usize;
             assert!(len > 0, "classify chunk length must be non-zero at {sample_rate}Hz");
         }
+    }
+
+    #[test]
+    fn corrections_expire_after_the_window() {
+        let now = Instant::now();
+        assert!(!Pipeline::is_stale(None, now));
+        assert!(!Pipeline::is_stale(Some(now), now));
+        assert!(!Pipeline::is_stale(Some(now), now + CORRECTION_WINDOW));
+        assert!(Pipeline::is_stale(Some(now), now + CORRECTION_WINDOW + Duration::from_secs(1)));
     }
 
     #[test]

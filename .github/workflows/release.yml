@@ -1,0 +1,94 @@
+name: Release
+
+# Builds the Windows installer. Push a tag like v0.2.0 to publish a GitHub
+# Release with the installer attached, or run it by hand to get the installer
+# as a workflow artifact without publishing anything.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-installer:
+    name: Windows installer (NSIS)
+    runs-on: windows-latest
+    env:
+      # Exposed at job level so the signing step's `if` can test it
+      # (secrets themselves can't be used in `if` conditions).
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      # whisper-rs-sys uses bindgen 0.69, which produces broken bindings with
+      # the LLVM 20+ preinstalled on the runner (see README "libclang note").
+      # A pip-installed libclang is a known-good version.
+      - name: Install a bindgen-compatible libclang
+        shell: pwsh
+        run: |
+          pip install libclang
+          $native = python -c "import clang, os; print(os.path.join(os.path.dirname(clang.__file__), 'native'))"
+          "LIBCLANG_PATH=$native" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: npm ci
+        working-directory: apps/desktop
+        run: npm ci
+
+      # Code signing is optional: with no WINDOWS_CERTIFICATE secret the
+      # installer is built unsigned (Windows SmartScreen will warn on it).
+      # To sign, add these repository secrets:
+      #   WINDOWS_CERTIFICATE           base64-encoded .pfx
+      #   WINDOWS_CERTIFICATE_PASSWORD  its password
+      - name: Import signing certificate
+        if: env.WINDOWS_CERTIFICATE != ''
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $bytes = [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
+          $pfx = Join-Path $env:RUNNER_TEMP "cert.pfx"
+          [IO.File]::WriteAllBytes($pfx, $bytes)
+          $password = ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+          $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
+          Remove-Item $pfx
+          $override = @{ bundle = @{ windows = @{
+            certificateThumbprint = $cert.Thumbprint
+            digestAlgorithm = "sha256"
+            timestampUrl = "http://timestamp.digicert.com"
+          } } } | ConvertTo-Json -Depth 5
+          Set-Content -Path (Join-Path $env:RUNNER_TEMP "sign.json") -Value $override
+          "SIGN_CONFIG=$(Join-Path $env:RUNNER_TEMP 'sign.json')" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build installer
+        working-directory: apps/desktop
+        shell: pwsh
+        run: |
+          if ($env:SIGN_CONFIG) { npx tauri build --bundles nsis --config $env:SIGN_CONFIG }
+          else { npx tauri build --bundles nsis }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: auralis-windows-installer
+          path: target/release/bundle/nsis/*.exe
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/release/bundle/nsis/*.exe
+          generate_release_notes: true

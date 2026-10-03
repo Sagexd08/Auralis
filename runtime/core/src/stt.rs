@@ -12,6 +12,9 @@ pub struct SttEngine {
 
 impl SttEngine {
     pub fn load(model_path: &Path) -> Result<Self> {
+        static LOG_HOOK: std::sync::Once = std::sync::Once::new();
+        LOG_HOOK.call_once(whisper_rs::install_whisper_log_trampoline);
+
         let path_str = model_path
             .to_str()
             .context("model path is not valid UTF-8")?;

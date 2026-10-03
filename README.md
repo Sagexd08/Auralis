@@ -64,7 +64,10 @@ roughly 3x the decode cost:
 .\models\pull-model.ps1 small.en
 ```
 
-Any downloaded model appears in the tray **Settings → Model** picker. Decoding
+An installed copy needs no script: the first launch downloads the default model, and
+**Settings → Download models** fetches the others into the per-user app data folder
+(the repo's `models/` folder is also searched in dev builds). Any downloaded model
+appears in the **Active model** picker. Decoding
 uses beam search (width 5) with whisper.cpp's temperature-fallback thresholds and
 `no_context`, which together suppress the repetition loops that greedy decoding
 with cross-utterance context is prone to.
@@ -125,8 +128,10 @@ and the phases after it have since extended it past that plan's original scope.
 - [x] GitHub Actions CI (runtime tests + Linux Tauri build)
 - [x] Brand assets (app icon, banner)
 - [x] STT accuracy pass (beam search, no_context, temperature fallback)
-- [ ] CUDA acceleration — deferred; no CUDA Toolkit available, the CPU build works
-- [ ] Signed Windows installer / release automation
+- [x] GPU build switches — `--features cuda` / `--features vulkan` forward to whisper.cpp (untested here: needs the toolkit installed; the default CPU build is unaffected)
+- [x] Windows installer + release automation — `.github/workflows/release.yml` builds an NSIS installer on a `v*` tag; signs it when `WINDOWS_CERTIFICATE` / `WINDOWS_CERTIFICATE_PASSWORD` secrets are set, otherwise ships unsigned
+- [x] Local transcription API — `auralis-server` (`POST /v1/transcriptions`)
+- [x] Installed-app readiness — runtime model resolution + first-run model download, single instance, status overlay, fixed settings/status windows (they could not load their scripts), hotkey race guards, safe settings save with hotkey rollback
 
 ## Building
 
@@ -159,6 +164,26 @@ cd apps/desktop
 npm install
 npm run tauri dev
 ```
+
+## Download
+
+Grab the Windows installer from the [Releases page](https://github.com/Sagexd08/Auralis/releases/latest) or the project website. The first launch downloads the speech model.
+
+## Local API
+
+`auralis-server` exposes the same pipeline over HTTP, bound to loopback:
+
+```powershell
+cargo run --release -p auralis-runtime --bin auralis-server -- --model models/ggml-base.en-q5_1.bin
+
+curl --data-binary "@meeting.wav" -H "Content-Type: audio/wav" "http://127.0.0.1:8787/v1/transcriptions?cleanup=clean"
+```
+
+`GET /healthz` reports the loaded model. The body is a WAV file (any sample rate, mono or multi-channel); the response is JSON with `text`, `duration_s`, `processing_s` and `model`.
+
+## Contributing
+
+Auralis is open source under the [MIT license](LICENSE). See [CONTRIBUTING.md](CONTRIBUTING.md) to get started, and [SECURITY.md](SECURITY.md) to report a vulnerability.
 
 ## Benchmark harness (Phase 2)
 

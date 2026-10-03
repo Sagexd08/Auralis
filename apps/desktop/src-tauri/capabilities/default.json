@@ -2,10 +2,14 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main and settings windows",
-  "windows": ["main", "settings"],
+  "windows": [
+    "main",
+    "settings"
+  ],
   "permissions": [
     "core:default",
-    "opener:default",
+    "core:window:allow-close",
+    "core:window:allow-hide",
     "global-shortcut:default"
   ]
 }

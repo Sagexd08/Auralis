@@ -34,16 +34,31 @@
         cursor: pointer;
         font-size: 14px;
       }
+      button:disabled { opacity: 0.5; cursor: default; }
       button.primary { background: #1a5fa8; border-color: #1a5fa8; color: #fff; }
-      button:hover { filter: brightness(1.15); }
+      button:hover:not(:disabled) { filter: brightness(1.15); }
       #status { margin-top: 12px; font-size: 13px; min-height: 16px; }
       #status.error { color: #ff8a8a; }
       #status.ok { color: #8fde8f; }
       .hint { font-size: 12px; color: #aeb4ba; margin-top: 2px; }
+      #warning {
+        display: none; margin-bottom: 14px; padding: 10px; font-size: 13px;
+        background: #3a2a10; border: 1px solid #8a6a20; border-radius: 4px; color: #f5d58a;
+      }
+      #models { margin-top: 6px; }
+      .model {
+        display: flex; align-items: center; gap: 8px; padding: 7px 0;
+        border-bottom: 1px solid #262626; font-size: 13px;
+      }
+      .model .name { flex: 1; }
+      .model button { flex: none; padding: 5px 10px; font-size: 12px; }
+      .model .state { color: #8fde8f; font-size: 12px; }
+      progress { width: 100%; height: 6px; margin-top: 4px; }
     </style>
   </head>
   <body>
     <h1>Auralis Settings</h1>
+    <div id="warning"></div>
 
     <label for="ptt">Push-to-talk hotkey</label>
     <input id="ptt" type="text" placeholder="Ctrl+Space" />
@@ -53,8 +68,13 @@
     <input id="toggle" type="text" placeholder="Ctrl+Shift+Space" />
     <div class="hint">Tap once to start, tap again to stop.</div>
 
-    <label for="model">Model</label>
+    <label for="model">Active model</label>
     <select id="model"></select>
+
+    <label>Download models</label>
+    <div id="models"></div>
+    <progress id="progress" value="0" max="100" hidden></progress>
+    <div class="hint">Larger models are more accurate but slower. Downloaded models appear in the list above.</div>
 
     <label for="mic">Microphone</label>
     <select id="mic"></select>
@@ -64,29 +84,36 @@
     <div class="hint" id="cleanup-hint"></div>
 
     <div class="row">
-      <button id="cancel">Cancel</button>
+      <button id="cancel">Close</button>
       <button id="save" class="primary">Save</button>
     </div>
     <div id="status"></div>
 
-    <script type="module">
-      import { invoke } from "@tauri-apps/api/core";
-      import { getCurrentWindow } from "@tauri-apps/api/window";
+    <script>
+      // No bundler: Tauri exposes its API on window.__TAURI__ (withGlobalTauri).
+      const { invoke } = window.__TAURI__.core;
+      const { listen } = window.__TAURI__.event;
+      const { getCurrentWindow } = window.__TAURI__.window;
 
       const ptt = document.getElementById("ptt");
       const toggle = document.getElementById("toggle");
       const model = document.getElementById("model");
+      const modelList = document.getElementById("models");
+      const progress = document.getElementById("progress");
       const mic = document.getElementById("mic");
       const cleanup = document.getElementById("cleanup");
       const cleanupHint = document.getElementById("cleanup-hint");
       const status = document.getElementById("status");
+      const warning = document.getElementById("warning");
 
       const CLEANUP_HINTS = {
-        raw: "Exactly what the model heard \u2014 no casing or punctuation added.",
+        raw: "Exactly what the model heard — no casing or punctuation added.",
         clean: "Capitalization and a terminal punctuation mark.",
-        polished: "Clean, plus removes \u201Cuh\u201D / \u201Cum\u201D disfluencies.",
+        polished: "Clean, plus removes “uh” / “um” disfluencies.",
         developer: "Removes disfluencies but adds no capital and no trailing period.",
       };
+
+      let activeModel = "";
 
       function updateCleanupHint() {
         cleanupHint.textContent = CLEANUP_HINTS[cleanup.value] || "";
@@ -97,34 +124,101 @@
         status.className = kind || "";
       }
 
-      function populateSelect(select, options, selected) {
+      function fillSelect(select, options, selected, emptyLabel) {
         select.innerHTML = "";
-        const defaultOpt = document.createElement("option");
-        defaultOpt.value = "";
-        defaultOpt.textContent = "(system default)";
-        if (select === mic) select.appendChild(defaultOpt);
+        if (emptyLabel !== undefined) {
+          const none = document.createElement("option");
+          none.value = "";
+          none.textContent = emptyLabel;
+          select.appendChild(none);
+        }
         for (const opt of options) {
           const el = document.createElement("option");
-          el.value = opt;
-          el.textContent = opt;
+          el.value = opt.value;
+          el.textContent = opt.label;
           select.appendChild(el);
         }
-        select.value = selected && options.includes(selected) ? selected : (select === mic ? "" : options[0] || "");
+        const values = options.map((o) => o.value);
+        select.value = values.includes(selected) ? selected : emptyLabel !== undefined ? "" : values[0] || "";
       }
+
+      const plain = (v) => ({ value: v, label: v });
+
+      function renderModels(models) {
+        const installed = models.filter((m) => m.installed);
+        fillSelect(
+          model,
+          installed.map((m) => ({ value: m.file, label: m.label })),
+          model.value || activeModel
+        );
+
+        modelList.innerHTML = "";
+        for (const m of models) {
+          const row = document.createElement("div");
+          row.className = "model";
+          const name = document.createElement("span");
+          name.className = "name";
+          name.textContent = m.size_mb ? `${m.label} (${m.size_mb} MB)` : m.label;
+          row.appendChild(name);
+          if (m.installed) {
+            const ok = document.createElement("span");
+            ok.className = "state";
+            ok.textContent = "Installed";
+            row.appendChild(ok);
+          } else {
+            const btn = document.createElement("button");
+            btn.textContent = "Download";
+            btn.addEventListener("click", () => downloadModel(m.file));
+            row.appendChild(btn);
+          }
+          modelList.appendChild(row);
+        }
+      }
+
+      async function refreshModels() {
+        renderModels(await invoke("list_models"));
+      }
+
+      async function downloadModel(file) {
+        modelList.querySelectorAll("button").forEach((b) => (b.disabled = true));
+        progress.hidden = false;
+        progress.value = 0;
+        setStatus("Downloading…", "");
+        try {
+          await invoke("download_model", { file });
+          setStatus("Model downloaded.", "ok");
+        } catch (e) {
+          setStatus(String(e), "error");
+        } finally {
+          progress.hidden = true;
+          await refreshModels();
+        }
+      }
+
+      listen("auralis://model-progress", (event) => {
+        const { downloaded, total } = event.payload;
+        if (total) progress.value = Math.round((downloaded * 100) / total);
+      });
 
       async function load() {
         try {
-          const [config, models, mics, cleanupModes] = await Promise.all([
+          const [config, models, mics, cleanupModes, startupWarning] = await Promise.all([
             invoke("get_config"),
             invoke("list_models"),
             invoke("list_mic_devices"),
             invoke("list_cleanup_modes"),
+            invoke("get_startup_warning"),
           ]);
+          if (startupWarning) {
+            warning.textContent = startupWarning;
+            warning.style.display = "block";
+          }
           ptt.value = config.push_to_talk_hotkey;
           toggle.value = config.toggle_hotkey;
-          populateSelect(model, models, config.model_file);
-          populateSelect(mic, mics, config.mic_device);
-          populateSelect(cleanup, cleanupModes, config.cleanup_mode);
+          activeModel = config.model_file;
+          renderModels(models);
+          fillSelect(mic, mics.map(plain), config.mic_device, "(system default)");
+          fillSelect(cleanup, cleanupModes.map(plain), config.cleanup_mode);
           updateCleanupHint();
         } catch (e) {
           setStatus(`Failed to load settings: ${e}`, "error");
@@ -132,7 +226,7 @@
       }
 
       document.getElementById("save").addEventListener("click", async () => {
-        setStatus("Saving...", "");
+        setStatus("Saving…", "");
         try {
           await invoke("save_config", {
             newConfig: {
@@ -143,6 +237,7 @@
               cleanup_mode: cleanup.value,
             },
           });
+          warning.style.display = "none";
           setStatus("Saved.", "ok");
         } catch (e) {
           setStatus(String(e), "error");
