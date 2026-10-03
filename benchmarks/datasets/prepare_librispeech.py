@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pulls a small slice of the LibriSpeech `test-clean` split via Hugging Face
 `datasets` (streaming, so only the requested clip count is downloaded) and
 writes it out as a manifest.json + WAV files in the same shape
@@ -15,7 +14,6 @@ from pathlib import Path
 
 import numpy as np
 
-
 def write_wav(path: Path, samples: np.ndarray, sample_rate: int) -> None:
     pcm = (np.clip(samples, -1.0, 1.0) * 32767.0).astype(np.int16)
     with wave.open(str(path), "wb") as wf:
@@ -23,7 +21,6 @@ def write_wav(path: Path, samples: np.ndarray, sample_rate: int) -> None:
         wf.setsampwidth(2)
         wf.setframerate(sample_rate)
         wf.writeframes(pcm.tobytes())
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -45,7 +42,6 @@ def main() -> None:
 
     (args.dest / "manifest.json").write_text(json.dumps({"clips": clips}, indent=2))
     print(f"Wrote {len(clips)} clip(s) to {args.dest}")
-
 
 if __name__ == "__main__":
     main()

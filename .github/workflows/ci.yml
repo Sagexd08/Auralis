@@ -45,9 +45,6 @@ jobs:
         with:
           workspaces: ". -> target"
 
-      # Scoped to auralis-runtime: that crate is clippy-clean, so warnings are
-      # errors here. The desktop crate is not yet clean, so gating it would
-      # only teach people to ignore a red check.
       - name: cargo clippy -p auralis-runtime
         run: cargo clippy -p auralis-runtime --all-targets --locked -- -D warnings
 
@@ -80,9 +77,6 @@ jobs:
         working-directory: apps/desktop
         run: npm ci
 
-      # Builds and runs the desktop crate's own unit tests (hotkey parsing,
-      # config round-trip, and the keystroke-accounting tests that cover
-      # in-place spoken correction).
       - name: cargo test -p auralis-desktop
         run: cargo test -p auralis-desktop --locked
 
@@ -101,10 +95,6 @@ jobs:
       - name: Install harness deps
         run: pip install -r benchmarks/requirements.txt
 
-      # No whisper model is downloaded in CI, so the accuracy assertions skip
-      # themselves. What this does catch is the harness failing to import or
-      # its modules breaking — which is how it would otherwise rot unnoticed
-      # between the infrequent runs against a real corpus.
       - name: python -m unittest
         working-directory: benchmarks
         run: python -m unittest discover -s tests -v
@@ -119,9 +109,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      # apps/web has no build step, so there is nothing to compile — but an
-      # unbalanced tag or a stray merge-conflict marker would otherwise ship
-      # straight to the deployed page.
       - name: Check markup is well-formed
         run: |
           python - <<'PY'

@@ -17,11 +17,10 @@ BENCH_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = BENCH_DIR.parent
 sys.path.insert(0, str(BENCH_DIR))
 
-from metrics.wer import compute_metrics  # noqa: E402
-from runners.run_variant import run_variant  # noqa: E402
+from metrics.wer import compute_metrics
+from runners.run_variant import run_variant
 
 MODEL_PATH = REPO_ROOT / "models" / "ggml-base.en-q5_1.bin"
-
 
 def _bench_cli_path() -> Path | None:
     exe = "auralis-bench-cli.exe" if sys.platform == "win32" else "auralis-bench-cli"
@@ -30,7 +29,6 @@ def _bench_cli_path() -> Path | None:
         if candidate.exists():
             return candidate
     return None
-
 
 class HarnessSmokeTest(unittest.TestCase):
     def setUp(self):
@@ -84,7 +82,6 @@ class HarnessSmokeTest(unittest.TestCase):
             ]
             report_json = json.dumps(report)
             self.assertIn("wer", report_json)
-
 
 if __name__ == "__main__":
     unittest.main()

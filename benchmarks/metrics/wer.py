@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 import jiwer
 
-
 def normalize(text: str) -> str:
     """Lowercase, strip punctuation, collapse whitespace — matches the
     loose normalization LibriSpeech references already use, so hypotheses
@@ -14,14 +13,12 @@ def normalize(text: str) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
-
 @dataclass
 class VariantMetrics:
     wer: float
     cer: float
     rtf: float
     num_clips: int
-
 
 def compute_metrics(references: list[str], hypotheses: list[str], total_elapsed_s: float, total_audio_s: float) -> VariantMetrics:
     if len(references) != len(hypotheses):

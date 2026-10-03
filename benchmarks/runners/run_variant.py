@@ -9,7 +9,6 @@ import wave
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 @dataclass
 class VariantResult:
     model: str
@@ -20,11 +19,9 @@ class VariantResult:
     total_elapsed_s: float = 0.0
     total_audio_s: float = 0.0
 
-
 def audio_duration_s(wav_path: Path) -> float:
     with wave.open(str(wav_path), "rb") as wf:
         return wf.getnframes() / float(wf.getframerate())
-
 
 def run_variant(
     bench_cli: Path,

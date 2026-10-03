@@ -3,7 +3,6 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, Stream};
 use crossbeam_channel::{Receiver, Sender};
 
-/// Owns an open input stream. Dropping this stops capture.
 pub struct AudioCapture {
     _stream: Stream,
     pub sample_rate: u32,
@@ -11,15 +10,10 @@ pub struct AudioCapture {
 }
 
 impl AudioCapture {
-    /// Opens the default input device's default mono-compatible config and starts
-    /// streaming samples immediately. Samples arrive as mono f32 at `sample_rate`
-    /// (the device's native rate — callers resample as needed).
     pub fn start() -> Result<Self> {
         Self::start_with_device(None)
     }
 
-    /// Like `start`, but opens a specific input device by name instead of the
-    /// system default. `None` falls back to the default device.
     pub fn start_with_device(device_name: Option<&str>) -> Result<Self> {
         let host = cpal::default_host();
         let device = match device_name {
@@ -72,15 +66,11 @@ impl AudioCapture {
         })
     }
 
-    /// Drains whatever samples have arrived so far without blocking.
     pub fn drain_available(&self) -> Vec<f32> {
         self.receiver.try_iter().collect()
     }
 }
 
-/// Lists available input device names, for a mic-selection UI. The system
-/// default is whichever `cpal::default_input_device()` resolves to, which
-/// may not be first in this list.
 pub fn list_input_device_names() -> Result<Vec<String>> {
     let host = cpal::default_host();
     let devices = host.input_devices().context("failed to enumerate input devices")?;

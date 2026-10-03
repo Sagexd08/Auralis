@@ -5,10 +5,6 @@ members = [
     "apps/desktop/src-tauri",
 ]
 
-# Profiles are only honoured at the workspace root. These lived in
-# apps/desktop/src-tauri/Cargo.toml, where cargo ignored them outright and
-# warned about it on every build, so release builds of the desktop app were
-# getting default settings rather than these.
 [profile.release]
 codegen-units = 1
 lto = true

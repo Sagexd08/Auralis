@@ -3,23 +3,13 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Persisted user settings: hotkey bindings, which model to load, and which
-/// mic device to capture from. Stored as JSON in the Tauri app config dir.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
-    /// e.g. "Ctrl+Space" — parsed by `hotkey::parse`.
     pub push_to_talk_hotkey: String,
-    /// e.g. "Ctrl+Shift+Space".
     pub toggle_hotkey: String,
-    /// Filename only (relative to `models/`), e.g. "ggml-base.en-q5_1.bin".
     pub model_file: String,
-    /// `None` means use the system default input device.
     pub mic_device: Option<String>,
-    /// How much the text layer rewrites the transcript: one of `raw`,
-    /// `clean`, `polished`, `developer`. Parsed by `CleanupMode::parse`;
-    /// an unrecognized value falls back to the default rather than failing
-    /// to load the whole config.
     pub cleanup_mode: String,
 }
 
@@ -40,8 +30,6 @@ impl AppConfig {
         config_dir.join("config.json")
     }
 
-    /// Loads the config file, falling back to defaults if it's missing or
-    /// unparseable (e.g. from an older/incompatible version).
     pub fn load(config_dir: &Path) -> Self {
         let path = Self::file_path(config_dir);
         match fs::read_to_string(&path) {
@@ -50,8 +38,6 @@ impl AppConfig {
         }
     }
 
-    /// The configured cleanup mode, falling back to the default if the stored
-    /// string isn't a mode this build knows about.
     pub fn cleanup_mode(&self) -> CleanupMode {
         CleanupMode::parse(&self.cleanup_mode).unwrap_or_default()
     }

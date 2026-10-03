@@ -90,7 +90,6 @@
     <div id="status"></div>
 
     <script>
-      // No bundler: Tauri exposes its API on window.__TAURI__ (withGlobalTauri).
       const { invoke } = window.__TAURI__.core;
       const { listen } = window.__TAURI__.event;
       const { getCurrentWindow } = window.__TAURI__.window;

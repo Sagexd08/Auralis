@@ -25,7 +25,6 @@
   <body>
     <div id="pill"><span id="dot"></span><span id="text">Idle</span></div>
     <script>
-      // No bundler: Tauri exposes its API on window.__TAURI__ (withGlobalTauri).
       const { listen } = window.__TAURI__.event;
       const pill = document.getElementById("pill");
       const text = document.getElementById("text");

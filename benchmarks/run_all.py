@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Single reproducible entrypoint for the Auralis benchmark harness.
 
 Runs every (model size) x (raw | vad-denoise) x (clean | noisy) combination,
@@ -37,7 +36,6 @@ MODELS = {
 
 PREPROCESS_VARIANTS = ["raw", "vad-denoise"]
 
-
 def bench_cli_path() -> Path:
     exe = "auralis-bench-cli.exe" if sys.platform == "win32" else "auralis-bench-cli"
     for profile in ("debug", "release"):
@@ -47,7 +45,6 @@ def bench_cli_path() -> Path:
     raise FileNotFoundError(
         "auralis-bench-cli not built. Run: cargo build -p auralis-runtime --bin auralis-bench-cli"
     )
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -99,7 +96,6 @@ def main() -> None:
 
     write_report(rows, args.report_name)
 
-
 def write_report(rows: list[dict], report_name: str | None) -> None:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     name = report_name or timestamp
@@ -124,7 +120,6 @@ def write_report(rows: list[dict], report_name: str | None) -> None:
     md_path.write_text("\n".join(lines) + "\n")
 
     print(f"\nReport written to {json_path} and {md_path}")
-
 
 if __name__ == "__main__":
     main()

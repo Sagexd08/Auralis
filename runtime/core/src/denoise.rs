@@ -1,8 +1,5 @@
 use nnnoiseless::DenoiseState;
 
-/// Denoises 48kHz mono f32 PCM using RNNoise, frame by frame. RNNoise's internal
-/// scale expects roughly int16-range magnitude, so samples are scaled up before
-/// processing and back down afterward.
 pub fn denoise_48k(samples: &[f32]) -> Vec<f32> {
     let frame_size = DenoiseState::FRAME_SIZE;
     let mut state = DenoiseState::new();

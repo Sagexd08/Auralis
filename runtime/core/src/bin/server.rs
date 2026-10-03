@@ -1,16 +1,3 @@
-//! Local transcription server: the same VAD -> denoise -> whisper -> cleanup
-//! chain the desktop app uses, behind a small HTTP API so other tools can use
-//! Auralis without linking the runtime.
-//!
-//!   GET  /healthz                      -> {"status":"ok","model":"..."}
-//!   POST /v1/transcriptions[?cleanup=] -> body is a WAV file; returns
-//!                                         {"text","duration_s","processing_s","model"}
-//!
-//!   curl --data-binary @meeting.wav -H "Content-Type: audio/wav" \
-//!        http://127.0.0.1:8787/v1/transcriptions
-//!
-//! There is no authentication, so it binds to loopback by default; only pass
-//! a non-loopback `--bind` on a network you trust.
 use anyhow::{Context, Result};
 use auralis_runtime::text::{self, CleanupMode};
 use auralis_runtime::{denoise, resample, stt::SttEngine, vad, wav};
@@ -21,16 +8,13 @@ use std::path::PathBuf;
 use std::time::Instant;
 use tiny_http::{Header, Method, Request, Response, Server};
 
-/// Largest accepted request body (~25 minutes of 16kHz 16-bit mono).
 const MAX_BODY_BYTES: u64 = 50 * 1024 * 1024;
 
 #[derive(Parser, Debug)]
 struct Args {
-    /// Path to a whisper.cpp model file.
     #[arg(long)]
     model: PathBuf,
 
-    /// Address to listen on.
     #[arg(long, default_value = "127.0.0.1")]
     bind: String,
 
@@ -124,7 +108,6 @@ fn main() -> Result<()> {
 
     let addr = format!("{}:{}", args.bind, args.port);
     let server = Server::http(&addr).map_err(|e| anyhow::anyhow!("failed to bind {addr}: {e}"))?;
-    // Printed (not logged) so scripts and tests can wait for readiness.
     println!("auralis-server listening on http://{addr}");
 
     for mut request in server.incoming_requests() {
