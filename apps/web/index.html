@@ -7,7 +7,7 @@
 <meta name="description" content="Real-time push-to-talk dictation that turns your voice into clean text, wherever you work. Open source, runs on your PC." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root {
@@ -36,12 +36,38 @@
   @media (min-width: 1024px) { .blk .arr { display: block; } .blk:nth-child(4) .arr { display: none; } }
   .chip { border-radius: .75rem; background: rgba(255,255,255,.06); padding: .6rem .75rem; font-size: .8125rem; line-height: 1.5; color: rgba(255,255,255,.8); }
   pre { scrollbar-color: rgba(255,255,255,.25) transparent; }
+  kbd, code, pre, .font-mono { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .blk { counter-increment: stage; }
+  .blk::after { content: counter(stage); position: absolute; top: .85rem; right: .95rem; font-family: 'Geist Mono', monospace; font-size: .7rem; color: rgba(255,255,255,.35); font-variant-numeric: tabular-nums; }
+  .blk-key::after { color: rgba(1,1,1,.4); }
+  #pipe { counter-reset: stage; }
+  .blk { transition: outline-color .3s, background-color .3s; outline: 2px solid transparent; outline-offset: 2px; }
+  .blk.on { outline-color: #fff; background: rgba(255,255,255,.10); }
+  .blk-key.on { background: #fff; }
+  .link { display: flex; align-items: center; gap: .75rem; margin: 1rem 0; font-size: .7rem; color: rgba(255,255,255,.5); }
+  .link::before, .link::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.12); }
+  .kcap { font-size: .75rem; border-radius: .5rem; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); padding: .3rem .6rem; transition: background-color .15s, color .15s, transform .15s, border-color .15s; }
+  .kcap.down { background: #fff; color: #010101; border-color: #fff; transform: translateY(1px); }
+  .caret { display: inline-block; width: .55ch; height: 1em; margin-left: 2px; vertical-align: -0.12em; background: #fff; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .wave { display: flex; align-items: center; gap: 3px; height: 1.5rem; }
+  .wave i { display: block; width: 3px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.25); transition: background-color .2s; }
+  .demo.listening .wave i { background: #fff; animation: bar .9s ease-in-out infinite; }
+  .wave i:nth-child(2n) { animation-delay: -.3s !important; } .wave i:nth-child(3n) { animation-delay: -.6s !important; } .wave i:nth-child(5n) { animation-delay: -.15s !important; }
+  @keyframes bar { 0%, 100% { height: 4px; } 50% { height: 22px; } }
+  .paper-sheet { transform: rotate(-1.2deg); transition: transform .5s cubic-bezier(.16,1,.3,1), box-shadow .5s; box-shadow: 0 30px 60px -30px rgba(0,0,0,.8); }
+  .paper:hover .paper-sheet, .paper:focus-visible .paper-sheet { transform: rotate(0deg) translateY(-4px); }
+  .js .rv { opacity: 0; transform: translateY(18px); transition: opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1); }
+  .js .rv.in { opacity: 1; transform: none; }
+  #download :focus-visible { outline-color: #0b0b0b; }
+  @media (prefers-reduced-motion: reduce) { .js .rv { opacity: 1; transform: none; } .caret, .demo.listening .wave i { animation: none; } }
   .cta { background: var(--auralis-cta-gradient); }
   :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
   }
 </style>
+<script>document.documentElement.classList.add("js")</script>
 </head>
 <body>
 <section class="relative h-screen w-full overflow-hidden">
@@ -125,110 +151,119 @@
 
 <div class="bg-[#010101] text-white">
 
-<section id="product" class="mx-auto max-w-6xl px-5 py-24 sm:px-8 lg:px-12 lg:py-32">
-  <div class="grid gap-12 lg:grid-cols-12">
-    <div class="lg:col-span-6">
-      <h2 class="text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl lg:text-5xl">Dictation that never leaves your PC.</h2>
-      <p class="mt-6 max-w-[62ch] text-base leading-relaxed text-white/70">Auralis types what you say into whatever window has focus: your editor, a terminal, a chat box, a form. Hold a key, speak, let go. Audio is captured, cleaned and transcribed on your own machine by whisper.cpp. There is no cloud speech service, no cloud text cleanup and no telemetry.</p>
-      <p class="mt-4 max-w-[62ch] text-base leading-relaxed text-white/70">It is open source under the MIT license, built as a Rust runtime with a small Tauri shell, and installs as a single Windows installer.</p>
-      <div class="mt-8 flex flex-wrap gap-3">
-        <a href="#download" class="cta rounded-full px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90">Download for Windows</a>
-        <a href="whitepaper.html" class="rounded-full bg-white/10 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/15">Read the whitepaper</a>
+<section id="product" class="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-12 lg:py-36">
+  <div class="grid items-center gap-14 lg:grid-cols-12 lg:gap-16">
+    <div class="rv lg:col-span-5">
+      <h2 class="text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl lg:text-6xl">Hold. Speak. Release.</h2>
+      <p class="mt-6 max-w-[48ch] text-base leading-relaxed text-white/70">Auralis types into whatever window has focus: an editor, a terminal, a chat box, a form. Transcription runs on your own machine, so what you say never becomes someone else’s data.</p>
+      <div class="mt-9 flex flex-wrap gap-3">
+        <a href="#download" class="cta rounded-full px-6 py-3 text-sm font-medium text-white transition-all hover:opacity-90 active:scale-[0.98]">Get Auralis</a>
+        <a href="whitepaper.html" class="rounded-full bg-white/10 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-white/15 active:scale-[0.98]">Read the whitepaper</a>
       </div>
     </div>
 
-    <dl class="lg:col-span-6 divide-y divide-white/10 border-y border-white/10">
-      <div class="grid gap-3 py-6 sm:grid-cols-[11rem_1fr] sm:gap-8">
-        <dt class="flex items-center gap-1.5">
-          <kbd class="rounded-md border border-white/20 bg-white/10 px-2 py-1 font-mono text-xs">Ctrl</kbd><span class="text-white/40">+</span><kbd class="rounded-md border border-white/20 bg-white/10 px-2 py-1 font-mono text-xs">Space</kbd>
-        </dt>
-        <dd><p class="font-medium">Hold to talk</p><p class="mt-1 text-sm leading-relaxed text-white/70">Record while the keys are down. On release the text is typed into the focused app.</p></dd>
+    <div class="rv lg:col-span-7" aria-label="Animated demonstration of dictation and a spoken correction">
+      <div id="demo" class="demo overflow-hidden rounded-2xl bg-[#0c0c0d] ring-1 ring-white/15 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]">
+        <div class="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <span class="text-xs text-white/60">Notes</span>
+          <span id="demo-status" class="rounded-full bg-white/10 px-3 py-1 font-mono text-[11px] text-white/80">Idle</span>
+        </div>
+        <div class="min-h-[11rem] px-5 py-6 sm:px-7 sm:py-8">
+          <p class="text-xl leading-snug tracking-tight sm:text-2xl lg:text-[1.75rem]"><span id="demo-text"></span><span class="caret" aria-hidden="true"></span></p>
+          <p id="demo-heard" class="mt-5 min-h-[1.25rem] font-mono text-xs text-white/50"></p>
+        </div>
+        <div class="flex items-center justify-between gap-4 border-t border-white/10 px-4 py-3.5 sm:px-5">
+          <div class="flex items-center gap-1.5" aria-hidden="true">
+            <kbd id="k1" class="kcap">Ctrl</kbd><span class="text-white/30">+</span><kbd id="k2" class="kcap">Space</kbd>
+          </div>
+          <div id="wave" class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
       </div>
-      <div class="grid gap-3 py-6 sm:grid-cols-[11rem_1fr] sm:gap-8">
-        <dt class="flex flex-wrap items-center gap-1.5">
-          <kbd class="rounded-md border border-white/20 bg-white/10 px-2 py-1 font-mono text-xs">Ctrl</kbd><span class="text-white/40">+</span><kbd class="rounded-md border border-white/20 bg-white/10 px-2 py-1 font-mono text-xs">Shift</kbd><span class="text-white/40">+</span><kbd class="rounded-md border border-white/20 bg-white/10 px-2 py-1 font-mono text-xs">Space</kbd>
-        </dt>
-        <dd><p class="font-medium">Hands-free</p><p class="mt-1 text-sm leading-relaxed text-white/70">Tap once to start continuous dictation, tap again to stop.</p></dd>
-      </div>
-      <div class="grid gap-3 py-6 sm:grid-cols-[11rem_1fr] sm:gap-8">
-        <dt class="text-sm text-white/70">Say “actually, change X to Y”</dt>
-        <dd><p class="font-medium">Correct in place</p><p class="mt-1 text-sm leading-relaxed text-white/70">Auralis backspaces the text it just typed and retypes it with the fix. A correction stays available for 45 seconds.</p></dd>
-      </div>
-      <div class="grid gap-3 py-6 sm:grid-cols-[11rem_1fr] sm:gap-8">
-        <dt class="text-sm text-white/70">Raw · Clean · Polished · Developer</dt>
-        <dd><p class="font-medium">You choose how much it rewrites</p><p class="mt-1 text-sm leading-relaxed text-white/70">Developer mode adds no capital letters or trailing period, so <span class="font-mono text-white/90">cargo test --locked</span> stays a command.</p></dd>
-      </div>
-      <div class="grid gap-3 py-6 sm:grid-cols-[11rem_1fr] sm:gap-8">
-        <dt class="font-mono text-sm text-white/70">127.0.0.1:8787</dt>
-        <dd><p class="font-medium">A local API</p><p class="mt-1 text-sm leading-relaxed text-white/70"><span class="font-mono text-white/90">auralis-server</span> exposes <span class="font-mono text-white/90">POST /v1/transcriptions</span> on loopback, so your own scripts can use the same engine.</p></dd>
-      </div>
-    </dl>
+      <p class="mt-3 text-xs text-white/50">An illustration of the real behavior, not a recording.</p>
+    </div>
+  </div>
+
+  <div class="rv mt-24 grid gap-x-10 gap-y-10 border-t border-white/10 pt-10 md:grid-cols-3">
+    <div>
+      <h3 class="text-lg font-semibold tracking-tight">Correct it out loud</h3>
+      <p class="mt-2 max-w-[40ch] text-sm leading-relaxed text-white/70">Say “actually, change Rahul to Rohan” and Auralis backspaces what it just typed and retypes it. The window to correct stays open for 45 seconds.</p>
+    </div>
+    <div>
+      <h3 class="text-lg font-semibold tracking-tight">Decide how much it rewrites</h3>
+      <p class="mt-2 max-w-[40ch] text-sm leading-relaxed text-white/70">Raw, clean, polished or developer. Developer mode keeps <span class="font-mono text-white/90">cargo test --locked</span> a command, with no capital letter or full stop.</p>
+    </div>
+    <div>
+      <h3 class="text-lg font-semibold tracking-tight">Script it</h3>
+      <p class="mt-2 max-w-[40ch] text-sm leading-relaxed text-white/70">The same engine runs as a local server on <span class="font-mono text-white/90">127.0.0.1:8787</span>. Send a WAV file, get text back.</p>
+    </div>
   </div>
 </section>
 
 <section id="architecture" class="border-t border-white/10">
-  <div class="mx-auto max-w-6xl px-5 py-24 sm:px-8 lg:px-12 lg:py-32">
-    <h2 class="max-w-2xl text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl lg:text-5xl">From keypress to text, end to end.</h2>
-    <p class="mt-6 max-w-[62ch] text-base leading-relaxed text-white/70">Two views of the same system. First, what happens to a single utterance. Then, how the pieces are packaged.</p>
+  <div class="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-12 lg:py-36">
+    <div class="rv">
+      <h2 class="max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl lg:text-6xl">From keypress to text, all on your PC.</h2>
+      <p class="mt-6 max-w-[56ch] text-base leading-relaxed text-white/70">Follow one sentence through the pipeline, then see how the pieces are packaged.</p>
+    </div>
 
-    <figure class="mt-14" aria-labelledby="fig1">
-      <figcaption id="fig1" class="mb-4 text-sm font-medium text-white/80">The dictation path</figcaption>
-      <div class="rounded-3xl border border-dashed border-white/25 p-4 sm:p-6">
-        <p class="mb-4 flex items-center gap-2 text-xs text-white/60">
+    <figure class="rv mt-14" aria-labelledby="fig1">
+      <figcaption id="fig1" class="sr-only">The dictation path, eight stages from hotkey to inserted text</figcaption>
+      <div class="rounded-2xl border border-dashed border-white/25 p-4 sm:p-6">
+        <p class="mb-5 flex items-center gap-2 text-xs text-white/60">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
           Everything inside this boundary runs on your PC. No audio or text crosses it.
         </p>
-        <ol class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <ol id="pipe" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <li class="blk"><b>Hotkey</b><i>global-hotkey</i><span>Ctrl+Space held, or Ctrl+Shift+Space toggled. Starts and stops capture.</span><svg class="arr" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></li>
           <li class="blk"><b>Mic capture</b><i>cpal · 16 kHz mono</i><span>Buffers audio from the default input device while the key is down.</span><svg class="arr" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></li>
           <li class="blk"><b>Quality check</b><i>SNR · RMS · clipping</i><span>Measured before anything is changed, and logged at debug level.</span><svg class="arr" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></li>
           <li class="blk"><b>VAD trim</b><i>webrtc-vad</i><span>Cuts leading and trailing silence from the held segment.</span></li>
           <li class="blk"><b>Denoise</b><i>RNNoise · nnnoiseless</i><span>Pure-Rust noise suppression for fans, keyboards and rooms.</span><svg class="arr" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></li>
           <li class="blk blk-key"><b>Transcribe</b><i>whisper.cpp · GGUF</i><span>Beam search (width 5) with temperature fallback and no cross-utterance context.</span><svg class="arr" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></li>
-          <li class="blk"><b>Text cleanup</b><i>local rules</i><span>Capitalisation, punctuation, filler words, spoken corrections. Mode is a setting.</span><svg class="arr" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></li>
-          <li class="blk"><b>Insert</b><i>enigo · SendInput</i><span>Types into the focused window. If the window blocks input, the text is copied to the clipboard instead.</span></li>
+          <li class="blk"><b>Text cleanup</b><i>local rules</i><span>Capitalisation, punctuation, filler words, spoken corrections. The mode is a setting.</span><svg class="arr" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></li>
+          <li class="blk"><b>Insert</b><i>enigo · SendInput</i><span>Types into the focused window. If it blocks input, the text goes to the clipboard.</span></li>
         </ol>
       </div>
     </figure>
 
-    <figure class="mt-16" aria-labelledby="fig2">
-      <figcaption id="fig2" class="mb-4 text-sm font-medium text-white/80">System architecture</figcaption>
+    <figure class="rv mt-6" aria-labelledby="fig2">
+      <figcaption id="fig2" class="sr-only">System architecture</figcaption>
       <div class="grid gap-3 lg:grid-cols-12">
-        <div class="lg:col-span-8 rounded-3xl bg-white/[0.04] p-4 ring-1 ring-white/10 sm:p-6">
+        <div class="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10 sm:p-7 lg:col-span-8">
           <p class="text-sm font-medium">Desktop shell <span class="ml-1 font-mono text-xs font-normal text-white/60">apps/desktop · Tauri 2</span></p>
           <ul class="mt-3 grid gap-2 sm:grid-cols-3">
-            <li class="chip">Global hotkeys, with rollback if a rebind fails</li>
+            <li class="chip">Global hotkeys, rolled back if a rebind fails</li>
             <li class="chip">Tray, status overlay and settings window</li>
             <li class="chip">Single-instance guard and JSON config</li>
           </ul>
-          <svg class="mx-auto my-3 h-6 w-6 text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="calls into"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+          <div class="link" aria-hidden="true"><span>calls into</span></div>
           <p class="text-sm font-medium">Runtime library <span class="ml-1 font-mono text-xs font-normal text-white/60">runtime/core · auralis-runtime</span></p>
           <ul class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <li class="chip font-mono">audio</li><li class="chip font-mono">vad</li><li class="chip font-mono">denoise</li><li class="chip font-mono">resample</li>
             <li class="chip font-mono">stt</li><li class="chip font-mono">text</li><li class="chip font-mono">quality</li><li class="chip font-mono">pipeline</li>
           </ul>
-          <svg class="mx-auto my-3 h-6 w-6 text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="loads"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+          <div class="link" aria-hidden="true"><span>loads</span></div>
           <p class="text-sm font-medium">Models <span class="ml-1 font-mono text-xs font-normal text-white/60">per-user app data</span></p>
           <ul class="mt-3 grid gap-2 sm:grid-cols-3">
             <li class="chip">base.en, about 59 MB, downloaded on first run</li>
             <li class="chip">small.en, about 190 MB, optional</li>
-            <li class="chip">CPU by default; CUDA or Vulkan builds from source</li>
+            <li class="chip">CPU by default; CUDA or Vulkan from source</li>
           </ul>
         </div>
 
-        <div class="lg:col-span-4 flex flex-col gap-3">
-          <div class="rounded-3xl bg-white/[0.04] p-4 ring-1 ring-white/10 sm:p-6">
+        <div class="flex flex-col gap-3 lg:col-span-4">
+          <div class="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10 sm:p-6">
             <p class="text-sm font-medium">Local API <span class="ml-1 font-mono text-xs font-normal text-white/60">auralis-server</span></p>
-            <p class="mt-2 text-sm leading-relaxed text-white/70">Same runtime, no desktop shell. Binds to 127.0.0.1 by default.</p>
+            <p class="mt-2 text-sm leading-relaxed text-white/70">The same runtime without the desktop shell. Binds to 127.0.0.1 by default.</p>
             <p class="mt-3 font-mono text-xs leading-relaxed text-white/80">POST /v1/transcriptions<br/>GET&nbsp; /healthz</p>
           </div>
-          <div class="rounded-3xl bg-white/[0.04] p-4 ring-1 ring-white/10 sm:p-6">
+          <div class="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10 sm:p-6">
             <p class="text-sm font-medium">Benchmark harness <span class="ml-1 font-mono text-xs font-normal text-white/60">benchmarks/</span></p>
-            <p class="mt-2 text-sm leading-relaxed text-white/70">Python runner around a bench CLI. Measures WER, CER and real-time factor across model size and preprocessing. No results are published until it has been run on a real corpus.</p>
+            <p class="mt-2 text-sm leading-relaxed text-white/70">Measures WER, CER and real-time factor across model size and preprocessing. Nothing is published until it has run on a real corpus.</p>
           </div>
-          <div class="rounded-3xl bg-white/[0.04] p-4 ring-1 ring-white/10 sm:p-6">
+          <div class="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10 sm:p-6">
             <p class="text-sm font-medium">Release pipeline <span class="ml-1 font-mono text-xs font-normal text-white/60">GitHub Actions</span></p>
-            <p class="mt-2 text-sm leading-relaxed text-white/70">CI runs tests and clippy. A version tag builds the NSIS installer and publishes it to Releases.</p>
+            <p class="mt-2 text-sm leading-relaxed text-white/70">CI runs tests and clippy. A version tag builds the installer and publishes it with a checksum.</p>
           </div>
         </div>
       </div>
@@ -237,76 +272,80 @@
 </section>
 
 <section id="whitepaper" class="border-t border-white/10">
-  <div class="mx-auto grid max-w-6xl gap-10 px-5 py-24 sm:px-8 lg:grid-cols-12 lg:px-12 lg:py-32">
-    <div class="lg:col-span-6">
-      <h2 class="text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl lg:text-5xl">The whitepaper.</h2>
-      <p class="mt-6 max-w-[62ch] text-base leading-relaxed text-white/70">Why Auralis is built the way it is: the local-first privacy model, each stage of the pipeline, the text rules, the API, how it is measured, and what it does not do yet. It says what is untested.</p>
-      <div class="mt-8 flex flex-wrap gap-3">
-        <a href="whitepaper.html" class="cta rounded-full px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90">Read online</a>
-        <a href="whitepaper.html?print=1" class="rounded-full bg-white/10 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/15">Save as PDF</a>
+  <div class="mx-auto grid max-w-7xl items-center gap-14 px-5 py-24 sm:px-8 lg:grid-cols-12 lg:gap-16 lg:px-12 lg:py-36">
+    <div class="rv lg:col-span-5">
+      <h2 class="text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl lg:text-6xl">Read how it works.</h2>
+      <p class="mt-6 max-w-[48ch] text-base leading-relaxed text-white/70">The whitepaper covers the privacy model, each pipeline stage, the text rules, the API and how Auralis is measured. It also lists what is untested.</p>
+      <div class="mt-9 flex flex-wrap gap-3">
+        <a href="whitepaper.html" class="cta rounded-full px-6 py-3 text-sm font-medium text-white transition-all hover:opacity-90 active:scale-[0.98]">Read the whitepaper</a>
+        <a href="whitepaper.html?print=1" class="rounded-full bg-white/10 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-white/15 active:scale-[0.98]">Save as PDF</a>
       </div>
     </div>
-    <ol class="lg:col-span-6 divide-y divide-white/10 border-y border-white/10 text-sm">
-      <li><a class="flex justify-between gap-4 py-3.5 text-white/80 transition-colors hover:text-white" href="whitepaper.html#abstract"><span>Abstract and design goals</span><span aria-hidden="true">→</span></a></li>
-      <li><a class="flex justify-between gap-4 py-3.5 text-white/80 transition-colors hover:text-white" href="whitepaper.html#privacy"><span>Privacy model</span><span aria-hidden="true">→</span></a></li>
-      <li><a class="flex justify-between gap-4 py-3.5 text-white/80 transition-colors hover:text-white" href="whitepaper.html#pipeline"><span>The pipeline, stage by stage</span><span aria-hidden="true">→</span></a></li>
-      <li><a class="flex justify-between gap-4 py-3.5 text-white/80 transition-colors hover:text-white" href="whitepaper.html#text"><span>Text cleanup and spoken corrections</span><span aria-hidden="true">→</span></a></li>
-      <li><a class="flex justify-between gap-4 py-3.5 text-white/80 transition-colors hover:text-white" href="whitepaper.html#api"><span>Local API</span><span aria-hidden="true">→</span></a></li>
-      <li><a class="flex justify-between gap-4 py-3.5 text-white/80 transition-colors hover:text-white" href="whitepaper.html#measure"><span>How it is measured</span><span aria-hidden="true">→</span></a></li>
-      <li><a class="flex justify-between gap-4 py-3.5 text-white/80 transition-colors hover:text-white" href="whitepaper.html#limits"><span>Limitations and roadmap</span><span aria-hidden="true">→</span></a></li>
-    </ol>
+
+    <a href="whitepaper.html" class="rv paper group block lg:col-span-7" aria-label="Open the Auralis whitepaper">
+      <div class="paper-sheet rounded-2xl bg-[#f6f6f4] p-7 text-[#0b0b0b] sm:p-10">
+        <p class="font-mono text-[11px] text-black/60">Auralis · Whitepaper · Phase 1</p>
+        <h3 class="mt-4 max-w-[18ch] text-3xl font-semibold leading-[1.05] tracking-tight sm:text-4xl">Local-first push-to-talk dictation</h3>
+        <p class="mt-6 max-w-[52ch] text-sm leading-relaxed text-black/75 sm:text-[0.95rem]">Auralis turns speech into typed text in any Windows application. Every stage, from microphone capture to keystroke injection, runs on the user’s own machine. No audio or text is sent to a cloud service, and the software collects no telemetry.</p>
+        <ul class="mt-8 grid gap-x-8 gap-y-1.5 border-t border-black/15 pt-5 font-mono text-xs text-black/70 sm:grid-cols-2">
+          <li>Abstract</li><li>Privacy model</li><li>The pipeline</li><li>Text cleanup</li><li>Local API</li><li>Measurement</li><li>Limitations</li><li>Roadmap</li>
+        </ul>
+      </div>
+    </a>
   </div>
 </section>
 
-<section id="download" class="border-t border-white/10">
-  <div class="mx-auto max-w-6xl px-5 py-24 sm:px-8 lg:px-12 lg:py-32">
-    <h2 class="max-w-2xl text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl lg:text-5xl">Download Auralis.</h2>
-    <p class="mt-6 max-w-[62ch] text-base leading-relaxed text-white/70">Free, open source, Windows. The installer is about 3 MB; the speech model downloads the first time you launch it.</p>
+</div>
 
-    <div class="mt-10 flex flex-wrap items-center gap-4">
-      <a id="dl-btn" href="https://github.com/Sagexd08/Auralis/releases/latest" class="inline-flex items-center gap-2 rounded-full bg-white px-7 py-4 text-base font-semibold text-[#010101] transition-opacity hover:opacity-90">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>
-        <span id="dl-label">Download for Windows</span>
-      </a>
-      <a href="https://github.com/Sagexd08/Auralis" class="rounded-full bg-white/10 px-6 py-4 text-sm font-medium transition-colors hover:bg-white/15">View source on GitHub</a>
-    </div>
-    <p id="dl-meta" class="mt-4 text-sm text-white/60">Opens the latest release on GitHub.</p>
-
-    <div class="mt-16 grid gap-10 lg:grid-cols-3">
-      <div>
-        <h3 class="text-lg font-semibold">Install</h3>
-        <ol class="mt-4 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-white/70">
-          <li>Run the installer and launch Auralis.</li>
-          <li>Wait for the first-run model download (about 59 MB).</li>
-          <li>Click into any text field, hold Ctrl+Space, speak, release.</li>
-        </ol>
-        <p class="mt-4 text-sm leading-relaxed text-white/60">Releases are not guaranteed to be code-signed. If Windows SmartScreen warns you, check the file against the release page before choosing to run it.</p>
+<section id="download" class="bg-white text-[#0b0b0b]">
+  <div class="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-12 lg:py-36">
+    <div class="rv grid gap-12 lg:grid-cols-12">
+      <div class="lg:col-span-7">
+        <h2 class="text-5xl font-semibold leading-[1.02] tracking-tighter sm:text-6xl lg:text-7xl">Get Auralis for Windows.</h2>
+        <p class="mt-6 max-w-[50ch] text-base leading-relaxed text-black/70">Free and open source. A small installer, and the speech model downloads the first time you launch it.</p>
+        <div class="mt-10 flex flex-wrap items-center gap-4">
+          <a id="dl-btn" href="https://github.com/Sagexd08/Auralis/releases" class="inline-flex items-center gap-2.5 rounded-full bg-[#0b0b0b] px-8 py-4 text-base font-semibold text-white transition-all hover:bg-black/85 active:scale-[0.98]">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>
+            <span id="dl-label">Download for Windows</span>
+          </a>
+          <a id="dl-sums" href="https://github.com/Sagexd08/Auralis/releases" class="hidden text-sm font-medium underline underline-offset-4 decoration-black/30 hover:decoration-black">SHA-256 checksums</a>
+        </div>
+        <p id="dl-meta" class="mt-4 max-w-[60ch] text-sm leading-relaxed text-black/60" aria-live="polite">Checking for the latest release…</p>
       </div>
+
+      <ol class="lg:col-span-5 divide-y divide-black/10 border-y border-black/10">
+        <li class="grid grid-cols-[2rem_1fr] gap-3 py-5"><span class="font-mono text-sm text-black/50">1</span><div><p class="font-medium">Run the installer</p><p class="mt-1 text-sm leading-relaxed text-black/65">It installs for the current user and does not need administrator rights.</p></div></li>
+        <li class="grid grid-cols-[2rem_1fr] gap-3 py-5"><span class="font-mono text-sm text-black/50">2</span><div><p class="font-medium">Let the first launch finish</p><p class="mt-1 text-sm leading-relaxed text-black/65">The default speech model (about 59 MB) downloads once and stays on your PC.</p></div></li>
+        <li class="grid grid-cols-[2rem_1fr] gap-3 py-5"><span class="font-mono text-sm text-black/50">3</span><div><p class="font-medium">Click into any text field</p><p class="mt-1 text-sm leading-relaxed text-black/65">Hold <span class="font-mono text-black">Ctrl+Space</span>, speak, release.</p></div></li>
+      </ol>
+    </div>
+
+    <p class="rv mt-10 max-w-[70ch] text-sm leading-relaxed text-black/60">Releases are not guaranteed to be code-signed yet. If Windows SmartScreen warns you, choose “More info”, check the file name and the SHA-256 checksum against the release page, and only then run it.</p>
+
+    <div id="source" class="rv mt-16 grid gap-8 border-t border-black/10 pt-12 lg:grid-cols-2">
       <div>
-        <h3 class="text-lg font-semibold">Build from source</h3>
-        <pre class="mt-4 overflow-x-auto rounded-2xl bg-white/[0.06] p-4 font-mono text-xs leading-relaxed text-white/85 ring-1 ring-white/10"><code>git clone https://github.com/Sagexd08/Auralis
+        <h3 class="text-lg font-semibold tracking-tight">Build from source</h3>
+        <pre class="mt-4 overflow-x-auto rounded-2xl bg-[#0b0b0b] p-5 font-mono text-xs leading-relaxed text-white/85"><code>git clone https://github.com/Sagexd08/Auralis
 cd Auralis/apps/desktop
 npm ci
 npm run tauri build
 
-# GPU: add --features cuda
-# or    --features vulkan</code></pre>
+# GPU: add --features cuda  (or vulkan)</code></pre>
       </div>
       <div>
-        <h3 class="text-lg font-semibold">Use the local API</h3>
-        <pre class="mt-4 overflow-x-auto rounded-2xl bg-white/[0.06] p-4 font-mono text-xs leading-relaxed text-white/85 ring-1 ring-white/10"><code>auralis-server --model base.en.bin
+        <h3 class="text-lg font-semibold tracking-tight">Use the local API</h3>
+        <pre class="mt-4 overflow-x-auto rounded-2xl bg-[#0b0b0b] p-5 font-mono text-xs leading-relaxed text-white/85"><code>auralis-server --model base.en.bin
 
 curl -X POST \
   "http://127.0.0.1:8787/v1/transcriptions?cleanup=clean" \
   --data-binary @speech.wav</code></pre>
-        <p class="mt-4 text-sm leading-relaxed text-white/60">WAV in, JSON out: text, duration, processing time, model.</p>
       </div>
     </div>
   </div>
 </section>
 
-<footer class="border-t border-white/10">
-  <div class="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-8 text-sm text-white/60 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-12">
+<footer class="bg-[#010101] text-white">
+  <div class="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-white/60 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-12">
     <span>auralis · MIT license</span>
     <span class="flex flex-wrap gap-x-5 gap-y-2">
       <a class="hover:text-white" href="whitepaper.html">Whitepaper</a>
@@ -317,7 +356,7 @@ curl -X POST \
     </span>
   </div>
 </footer>
-</div>
+
 
 <script>
 (function () {
@@ -352,15 +391,83 @@ curl -X POST \
   overlay.addEventListener('click', function () { set(false); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && open) set(false); });
   links.forEach(function (a) { a.addEventListener('click', function () { set(false); }); });
-  fetch('https://api.github.com/repos/Sagexd08/Auralis/releases/latest').then(function (r) { return r.ok ? r.json() : null; }).then(function (rel) {
-    if (!rel) return;
-    var a = (rel.assets || []).filter(function (x) { return /\.exe$/i.test(x.name); })[0];
-    if (!a) return;
-    document.getElementById('dl-btn').href = a.browser_download_url;
-    document.getElementById('dl-label').textContent = 'Download ' + rel.tag_name + ' for Windows';
-    document.getElementById('dl-meta').textContent = a.name + ' · ' + (a.size / 1048576).toFixed(1) + ' MB' + (rel.prerelease ? ' · pre-release' : '');
-  }).catch(function () {});
+  var dlBtn = document.getElementById('dl-btn'), dlLabel = document.getElementById('dl-label'),
+      dlMeta = document.getElementById('dl-meta'), dlSums = document.getElementById('dl-sums');
+  var RELEASES = 'https://github.com/Sagexd08/Auralis/releases';
+  function noRelease(msg) {
+    dlBtn.href = '#source';
+    dlLabel.textContent = 'Build from source';
+    dlMeta.textContent = msg;
+  }
+  fetch('https://api.github.com/repos/Sagexd08/Auralis/releases?per_page=10').then(function (r) {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(function (list) {
+    var rel = null, exe = null;
+    for (var i = 0; i < list.length && !exe; i++) {
+      if (list[i].draft) continue;
+      var a = (list[i].assets || []).filter(function (x) { return /\.exe$/i.test(x.name); })[0];
+      if (a) { rel = list[i]; exe = a; }
+    }
+    if (!exe) { noRelease('No installer has been published yet. Build it from source below, or watch the repository for the first release.'); return; }
+    dlBtn.href = exe.browser_download_url;
+    dlLabel.textContent = 'Download ' + rel.tag_name + ' for Windows';
+    var d = new Date(rel.published_at);
+    dlMeta.textContent = exe.name + ' \u00b7 ' + (exe.size / 1048576).toFixed(1) + ' MB \u00b7 ' + d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + (rel.prerelease ? ' \u00b7 pre-release' : '');
+    var sums = (rel.assets || []).filter(function (x) { return /sha256/i.test(x.name); })[0];
+    if (sums) { dlSums.href = sums.browser_download_url; dlSums.classList.remove('hidden'); }
+  }).catch(function () {
+    dlBtn.href = RELEASES;
+    dlLabel.textContent = 'See releases on GitHub';
+    dlMeta.textContent = 'Could not check for a release from here. The releases page lists every installer.';
+  });
   window.addEventListener('pagehide', function () { document.body.style.overflow = ''; });
+})();
+</script>
+<script>
+(function () {
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var io = 'IntersectionObserver' in window;
+  document.querySelectorAll('.rv').forEach(function (el) {
+    if (!io) { el.classList.add('in'); return; }
+    var o = new IntersectionObserver(function (e) { if (e[0].isIntersecting) { el.classList.add('in'); o.disconnect(); } }, { threshold: 0.12 });
+    o.observe(el);
+  });
+
+  var demo = document.getElementById('demo'), text = document.getElementById('demo-text'),
+      status = document.getElementById('demo-status'), heard = document.getElementById('demo-heard'),
+      k1 = document.getElementById('k1'), k2 = document.getElementById('k2');
+  var A = 'Send the report to Rahul tomorrow.', B = 'Send the report to Rohan tomorrow.';
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function keys(d) { k1.classList.toggle('down', d); k2.classList.toggle('down', d); demo.classList.toggle('listening', d); }
+  function setStatus(t) { status.textContent = t; }
+  async function type(str, base) { for (var i = 0; i < str.length; i++) { text.textContent += str[i]; await sleep(base + Math.random() * 25); } }
+  async function erase(base) { while (text.textContent.length) { text.textContent = text.textContent.slice(0, -1); await sleep(base); } }
+  var visible = true;
+  if (io) new IntersectionObserver(function (e) { visible = e[0].isIntersecting; }).observe(demo);
+  async function gate() { while (!visible) await sleep(300); }
+  async function loop() {
+    for (;;) {
+      text.textContent = ''; heard.textContent = ''; setStatus('Idle'); keys(false);
+      await gate(); await sleep(900);
+      keys(true); setStatus('Listening'); await sleep(2000);
+      keys(false); setStatus('Transcribing'); heard.textContent = 'heard: send the report to rahul tomorrow'; await sleep(650);
+      setStatus('Typing'); await type(A, 38); setStatus('Idle'); await sleep(1700);
+      await gate(); keys(true); setStatus('Listening'); await sleep(1700);
+      keys(false); setStatus('Transcribing'); heard.textContent = 'heard: actually change rahul to rohan'; await sleep(650);
+      setStatus('Correcting'); await erase(14); await type(B, 30); setStatus('Idle'); heard.textContent = 'replaced in place';
+      await sleep(3200);
+    }
+  }
+  if (reduce) { text.textContent = B; heard.textContent = 'replaced in place'; } else { loop(); }
+
+  var blks = Array.prototype.slice.call(document.querySelectorAll('#pipe .blk')), pipe = document.getElementById('pipe'), pv = false, idx = 0;
+  if (io) new IntersectionObserver(function (e) { pv = e[0].isIntersecting; }, { threshold: 0.3 }).observe(pipe);
+  if (!reduce) setInterval(function () {
+    if (!pv) return;
+    blks.forEach(function (b) { b.classList.remove('on'); });
+    blks[idx % blks.length].classList.add('on'); idx++;
+  }, 1100);
 })();
 </script>
 </body>
