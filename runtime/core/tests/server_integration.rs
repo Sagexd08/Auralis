@@ -41,20 +41,20 @@ fn serves_health_errors_and_transcriptions() {
     let _guard = Guard(child);
     assert!(ready.contains("listening"), "unexpected banner: {ready:?}");
 
-    let (status, body) = http(port, b"GET /healthz HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n");
+    let (status, body) = http(port, b"GET /healthz HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
     assert_eq!(status, 200);
     assert!(body.contains("\"ok\""));
 
-    let (status, _) = http(port, b"GET /nope HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n");
+    let (status, _) = http(port, b"GET /nope HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
     assert_eq!(status, 404);
 
-    let garbage = b"POST /v1/transcriptions HTTP/1.1\r\nHost: x\r\nContent-Length: 4\r\nConnection: close\r\n\r\nnope";
+    let garbage = b"POST /v1/transcriptions HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 4\r\nConnection: close\r\n\r\nnope";
     let (status, _) = http(port, garbage);
     assert_eq!(status, 400);
 
     let wav = std::fs::read(root.join("tests/fixtures/jfk.wav")).unwrap();
     let mut request = format!(
-        "POST /v1/transcriptions?cleanup=clean HTTP/1.1\r\nHost: x\r\nContent-Type: audio/wav\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        "POST /v1/transcriptions?cleanup=clean HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: audio/wav\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
         wav.len()
     )
     .into_bytes();
