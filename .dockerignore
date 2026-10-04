@@ -1,0 +1,9 @@
+target
+node_modules
+.git
+.worktrees
+models/*.bin
+models/*.gguf
+benchmarks
+apps/web
+docs
