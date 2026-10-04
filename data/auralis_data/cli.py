@@ -20,6 +20,21 @@ def main(argv=None):
     r.add_argument("--commercial", action="store_true")
     r.add_argument("--redistribution", action="store_true")
     r.add_argument("--languages", default="")
+    i = sub.add_parser("import")
+    i.add_argument("kind", choices=["local", "librispeech", "commonvoice", "fleurs"])
+    i.add_argument("root")
+    i.add_argument("--id", required=True)
+    i.add_argument("--language", required=True)
+    i.add_argument("--revision", required=True)
+    i.add_argument("--license", default="")
+    i.add_argument("--score", action="store_true")
+    i.add_argument("--manifests", default="data/manifests")
+    p = sub.add_parser("pull")
+    p.add_argument("source", choices=["openslr", "huggingface", "kaggle"])
+    p.add_argument("name")
+    p.add_argument("--dest", required=True)
+    p.add_argument("--resource", default="12")
+    p.add_argument("--revision", default="main")
     c = sub.add_parser("check")
     c.add_argument("dataset_id")
     c.add_argument("--commercial", action="store_true")
@@ -35,6 +50,24 @@ def main(argv=None):
                                    a.commercial, a.redistribution, [x for x in a.languages.split(",") if x]))
         reg.save()
         print(f"registered {a.dataset_id} as {a.state}")
+        return 0
+    if a.cmd == "import":
+        from .connectors import import_dataset
+        rec, samples = import_dataset(a.kind, a.root, a.id, a.language, a.revision, a.manifests, a.license, a.score)
+        reg.register(rec)
+        reg.save()
+        print(f"imported {len(samples)} samples, {rec.hours} h as {rec.state.value}")
+        return 0
+    if a.cmd == "pull":
+        from .connectors import pull
+        if a.source == "openslr":
+            path, checksum = pull.pull_openslr(a.resource, a.name, a.dest)
+            print(f"pulled {a.name} to {path} sha256 {checksum}")
+        elif a.source == "huggingface":
+            path, sha, licence = pull.pull_huggingface(a.name, a.revision, a.dest)
+            print(f"pulled {a.name}@{sha} to {path}; licence from card: {licence or 'not stated'}")
+        else:
+            print(f"pulled to {pull.pull_kaggle(a.name, a.dest)}; register it with an explicit --license")
         return 0
     if a.cmd == "check":
         d = check_dataset(reg.get(a.dataset_id), a.commercial)
