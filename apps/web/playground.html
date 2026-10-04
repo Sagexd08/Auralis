@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Auralis Playground — try live dictation against your own machine</title>
+<meta name="description" content="Speak into your microphone and watch Auralis transcribe in real time. The audio goes only to the Auralis server running on your own computer." />
+<link rel="canonical" href="https://auralis-speak.vercel.app/playground.html" />
+<meta name="robots" content="index, follow" />
+<meta name="theme-color" content="#0d0b09" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Auralis" />
+<meta property="og:title" content="Auralis Playground" />
+<meta property="og:description" content="Live dictation against the Auralis server on your own machine. Nothing is uploaded." />
+<meta property="og:url" content="https://auralis-speak.vercel.app/playground.html" />
+<meta property="og:image" content="https://auralis-speak.vercel.app/og-image.jpg" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="tailwind.css" />
+<style>
+  :root { --accent: #e3ad5f; --ease: cubic-bezier(.16, 1, .3, 1); }
+  html, body { margin: 0; background: #0d0b09; }
+  body { font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
+  kbd, code, pre, .font-mono { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
+  :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  ::selection { background: #fff; color: #010101; }
+  select, input[type=text], input[type=file] { color-scheme: dark; }
+  .btn-main { background: linear-gradient(to bottom, #2b2b2b, #101010); }
+  .btn-main[aria-pressed=true] { background: var(--accent); color: #16110a; }
+  .caret { display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -0.12em; background: var(--accent); animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .caret { animation: none; } * { transition-duration: .01ms !important; } }
+</style>
+</head>
+<body class="text-white">
+<a href="#stage" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-full focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-[#010101]">Skip to the playground</a>
+
+<header class="mx-auto flex max-w-5xl items-center justify-between px-5 py-6 sm:px-8">
+  <a href="index.html" class="flex items-center gap-2">
+    <svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M 128 128 C 128 198.692 70.692 256 0 256 C 0 185.308 57.308 128 128 128 Z M 128 128 C 198.692 128 256 185.308 256 256 C 185.308 256 128 198.692 128 128 Z M 0 0 C 70.692 0 128 57.308 128 128 C 57.308 128 0 70.692 0 0 Z M 256 0 C 256 70.692 198.692 128 128 128 C 128 57.308 185.308 0 256 0 Z"/></svg>
+    <span class="text-lg font-semibold">auralis</span>
+  </a>
+  <nav class="flex items-center gap-2 text-sm" aria-label="Primary">
+    <a href="whitepaper.html" class="rounded-full px-4 py-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white">Whitepaper</a>
+    <a href="index.html#download" class="rounded-full bg-white/10 px-4 py-1.5 font-medium transition-colors hover:bg-white/15">Download</a>
+  </nav>
+</header>
+
+<main id="stage" class="mx-auto max-w-5xl px-5 pb-24 sm:px-8">
+  <h1 class="max-w-2xl text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl">Try it on your own machine.</h1>
+  <p class="mt-4 max-w-[58ch] text-base leading-relaxed text-white/70">This page records your microphone and streams it to the Auralis server running on your computer. Nothing is sent to us or to any cloud. If the server isn't running, nothing happens.</p>
+
+  <section class="mt-10 grid gap-6 lg:grid-cols-12" aria-label="Playground">
+    <div class="lg:col-span-8">
+      <div class="overflow-hidden rounded-2xl bg-[#0c0c0d] ring-1 ring-white/15 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]">
+        <div class="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <span class="text-xs text-white/60">Transcript</span>
+          <span id="state" role="status" aria-live="polite" class="rounded-full bg-white/10 px-3 py-1 font-mono text-xs text-white/80">Idle</span>
+        </div>
+        <div class="min-h-[13rem] px-5 py-6 sm:px-7 sm:py-8" aria-live="polite" aria-atomic="false">
+          <p id="transcript" class="text-xl leading-snug tracking-tight sm:text-2xl lg:text-[1.75rem]"><span id="final-text"></span><span id="partial-text" class="text-white/55"></span><span class="caret" aria-hidden="true"></span></p>
+          <p id="hint" class="mt-6 font-mono text-xs text-white/50">Press the button or the space bar, speak, then press again.</p>
+        </div>
+        <div class="border-t border-white/10">
+          <canvas id="wave" class="block h-20 w-full" aria-hidden="true"></canvas>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 border-t border-white/10 px-4 py-3.5 sm:px-5">
+          <button id="talk" type="button" aria-pressed="false" class="btn-main inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-white transition-all active:scale-[0.98]">
+            <span id="talk-dot" class="h-2.5 w-2.5 rounded-full bg-white/60" aria-hidden="true"></span>
+            <span id="talk-label">Start listening</span>
+          </button>
+          <label class="ml-auto inline-flex cursor-pointer items-center gap-2 rounded-full bg-white/10 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-white/15">
+            Transcribe a WAV file
+            <input id="file" type="file" accept=".wav,audio/wav,audio/x-wav" class="sr-only" />
+          </label>
+        </div>
+      </div>
+
+      <dl class="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-white/10 text-sm sm:grid-cols-4" aria-label="Measurements">
+        <div class="bg-[#0d0b09] px-4 py-4"><dt class="text-xs text-white/55">First partial</dt><dd id="m-first" class="mt-1 font-mono text-lg">–</dd></div>
+        <div class="bg-[#0d0b09] px-4 py-4"><dt class="text-xs text-white/55">Final after stop</dt><dd id="m-final" class="mt-1 font-mono text-lg">–</dd></div>
+        <div class="bg-[#0d0b09] px-4 py-4"><dt class="text-xs text-white/55">Real-time factor</dt><dd id="m-rtf" class="mt-1 font-mono text-lg">–</dd></div>
+        <div class="bg-[#0d0b09] px-4 py-4"><dt class="text-xs text-white/55">Audio</dt><dd id="m-audio" class="mt-1 font-mono text-lg">–</dd></div>
+      </dl>
+      <p class="mt-3 text-xs leading-relaxed text-white/50">Real-time factor is processing time divided by audio length; under 1 means faster than real time. These numbers are measured on your machine, in this page, just now.</p>
+      <div id="segments" class="mt-6 hidden rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
+        <h2 class="text-sm font-semibold">Segments</h2>
+        <ol id="segment-list" class="mt-3 space-y-2 font-mono text-xs text-white/75"></ol>
+      </div>
+    </div>
+
+    <aside class="lg:col-span-4">
+      <div class="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
+        <h2 class="text-sm font-semibold">Your server</h2>
+        <label for="server" class="mt-4 block text-xs text-white/60">Address</label>
+        <input id="server" type="text" value="127.0.0.1:8787" spellcheck="false" autocomplete="off" class="mt-1.5 w-full rounded-xl bg-[#16140f] px-3 py-2.5 font-mono text-sm ring-1 ring-white/15 focus:outline-none focus:ring-2 focus:ring-[#e3ad5f]" />
+        <div class="mt-3 flex items-center gap-2">
+          <button id="check" type="button" class="rounded-full bg-white/10 px-4 py-2 text-xs font-medium transition-colors hover:bg-white/15">Check connection</button>
+          <span id="server-status" role="status" aria-live="polite" class="text-xs text-white/60">Not checked</span>
+        </div>
+
+        <label for="cleanup" class="mt-5 block text-xs text-white/60">Text cleanup</label>
+        <select id="cleanup" class="mt-1.5 w-full rounded-xl bg-[#16140f] px-3 py-2.5 text-sm ring-1 ring-white/15 focus:outline-none focus:ring-2 focus:ring-[#e3ad5f]">
+          <option value="raw">Raw</option>
+          <option value="clean" selected>Clean</option>
+          <option value="polished">Polished</option>
+          <option value="developer">Developer</option>
+        </select>
+
+        <label for="language" class="mt-4 block text-xs text-white/60">Language</label>
+        <select id="language" class="mt-1.5 w-full rounded-xl bg-[#16140f] px-3 py-2.5 text-sm ring-1 ring-white/15 focus:outline-none focus:ring-2 focus:ring-[#e3ad5f]">
+          <option value="">Model default</option>
+        </select>
+        <p id="model-note" class="mt-2 text-xs text-white/50"></p>
+      </div>
+
+      <div class="mt-6 rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
+        <h2 class="text-sm font-semibold">Start the server</h2>
+        <p class="mt-2 text-xs leading-relaxed text-white/65">Run this on the computer you're using, then press Check connection. The allow flag lets this page talk to it; without it the browser is blocked on purpose.</p>
+        <pre class="mt-3 overflow-x-auto rounded-xl bg-[#16140f] p-3 text-[0.72rem] leading-relaxed text-white/85"><code>auralis-server \
+  --model models/ggml-base.en-q5_1.bin \
+  --allow-origin https://auralis-speak.vercel.app</code></pre>
+      </div>
+    </aside>
+  </section>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var els = {
+    talk: $('talk'), talkLabel: $('talk-label'), talkDot: $('talk-dot'), state: $('state'), hint: $('hint'),
+    finalText: $('final-text'), partialText: $('partial-text'), wave: $('wave'), file: $('file'),
+    server: $('server'), check: $('check'), serverStatus: $('server-status'), cleanup: $('cleanup'),
+    language: $('language'), modelNote: $('model-note'), first: $('m-first'), fin: $('m-final'),
+    rtf: $('m-rtf'), audio: $('m-audio'), segments: $('segments'), segmentList: $('segment-list')
+  };
+
+  var workletSource =
+    'class Capture extends AudioWorkletProcessor {' +
+    '  constructor() { super(); this.ratio = sampleRate / 16000; this.pos = 0; this.buf = []; this.out = []; }' +
+    '  process(inputs) {' +
+    '    var ch = inputs[0] && inputs[0][0];' +
+    '    if (!ch) return true;' +
+    '    for (var i = 0; i < ch.length; i++) this.buf.push(ch[i]);' +
+    '    while (this.pos + this.ratio <= this.buf.length) {' +
+    '      var a = Math.floor(this.pos), b = Math.max(a + 1, Math.floor(this.pos + this.ratio)), sum = 0;' +
+    '      for (var k = a; k < b; k++) sum += this.buf[k];' +
+    '      var v = Math.max(-1, Math.min(1, sum / (b - a)));' +
+    '      this.out.push(v < 0 ? v * 32768 : v * 32767);' +
+    '      this.pos += this.ratio;' +
+    '    }' +
+    '    var drop = Math.floor(this.pos);' +
+    '    if (drop > 0) { this.buf.splice(0, drop); this.pos -= drop; }' +
+    '    if (this.out.length >= 1600) { this.port.postMessage(Int16Array.from(this.out)); this.out = []; }' +
+    '    return true;' +
+    '  }' +
+    '}' +
+    'registerProcessor("capture", Capture);';
+
+  var session = null;
+  var animation = 0;
+
+  function base() {
+    var raw = els.server.value.trim().replace(/^(https?|wss?):\/\//, '').replace(/\/+$/, '');
+    return raw || '127.0.0.1:8787';
+  }
+
+  function setState(text) { els.state.textContent = text; }
+
+  function setServerStatus(text, ok) {
+    els.serverStatus.textContent = text;
+    els.serverStatus.className = 'text-xs ' + (ok === true ? 'text-[#8fd18f]' : ok === false ? 'text-[#f0a090]' : 'text-white/60');
+  }
+
+  function seconds(ms) { return ms < 1000 ? Math.round(ms) + ' ms' : (ms / 1000).toFixed(2) + ' s'; }
+
+  function resetMeasurements() {
+    els.first.textContent = '–';
+    els.fin.textContent = '–';
+    els.rtf.textContent = '–';
+    els.audio.textContent = '–';
+    els.segments.classList.add('hidden');
+    els.segmentList.replaceChildren();
+  }
+
+  function checkServer() {
+    setServerStatus('Checking…');
+    return fetch('http://' + base() + '/v1/models', { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (body) {
+        var active = (body.data || []).filter(function (m) { return m.active; })[0];
+        setServerStatus('Connected' + (active ? ' · ' + active.id : ''), true);
+        if (active) {
+          var langs = active.languages || [];
+          els.language.replaceChildren();
+          var def = document.createElement('option');
+          def.value = '';
+          def.textContent = 'Model default';
+          els.language.appendChild(def);
+          langs.filter(function (l) { return l !== 'auto'; }).forEach(function (l) {
+            var o = document.createElement('option');
+            o.value = l;
+            o.textContent = l;
+            els.language.appendChild(o);
+          });
+          els.modelNote.textContent = langs[0] === 'en' && langs.length === 1
+            ? 'This model is English only.'
+            : 'Engine: ' + (active.engine || 'unknown') + '.';
+        }
+        return true;
+      })
+      .catch(function (e) {
+        setServerStatus(location.protocol === 'https:' || e.name === 'TypeError'
+          ? 'Not reachable. Is the server running with --allow-origin for this site?'
+          : String(e.message || e), false);
+        return false;
+      });
+  }
+
+  function drawIdle() {
+    var c = els.wave, dpr = window.devicePixelRatio || 1;
+    var w = c.clientWidth, h = c.clientHeight;
+    if (c.width !== w * dpr) { c.width = w * dpr; c.height = h * dpr; }
+    var g = c.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(255,255,255,0.18)';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(0, h / 2);
+    g.lineTo(w, h / 2);
+    g.stroke();
+  }
+
+  function drawLive(analyser) {
+    var c = els.wave, dpr = window.devicePixelRatio || 1;
+    var w = c.clientWidth, h = c.clientHeight;
+    if (c.width !== w * dpr) { c.width = w * dpr; c.height = h * dpr; }
+    var g = c.getContext('2d');
+    var data = new Float32Array(analyser.fftSize);
+    function frame() {
+      analyser.getFloatTimeDomainData(data);
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, w, h);
+      g.strokeStyle = '#e3ad5f';
+      g.lineWidth = 1.6;
+      g.beginPath();
+      for (var x = 0; x < w; x++) {
+        var v = data[Math.floor((x / w) * data.length)] || 0;
+        var y = h / 2 + v * h * 0.9;
+        if (x === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      }
+      g.stroke();
+      animation = requestAnimationFrame(frame);
+    }
+    frame();
+  }
+
+  function setTalking(on) {
+    els.talk.setAttribute('aria-pressed', on ? 'true' : 'false');
+    els.talkLabel.textContent = on ? 'Stop and finish' : 'Start listening';
+    els.talkDot.className = 'h-2.5 w-2.5 rounded-full ' + (on ? 'bg-[#16110a]' : 'bg-white/60');
+  }
+
+  function teardown() {
+    cancelAnimationFrame(animation);
+    drawIdle();
+    if (session) {
+      session.stream.getTracks().forEach(function (t) { t.stop(); });
+      try { session.node.disconnect(); } catch (e) {}
+      try { session.context.close(); } catch (e) {}
+      session = null;
+    }
+    setTalking(false);
+  }
+
+  function start() {
+    els.finalText.textContent = '';
+    els.partialText.textContent = '';
+    resetMeasurements();
+    setState('Connecting');
+    var ws;
+    try {
+      ws = new WebSocket('ws://' + base() + '/ws/v1/transcribe');
+    } catch (e) {
+      setState('Idle');
+      setServerStatus('Invalid address', false);
+      return;
+    }
+    ws.binaryType = 'arraybuffer';
+    var startedAt = 0, firstSent = 0, stopAt = 0, gotFirst = false;
+
+    ws.onerror = function () {
+      setState('Idle');
+      setServerStatus('Not reachable. Is the server running with --allow-origin for this site?', false);
+      teardown();
+    };
+    ws.onclose = function () {
+      if (session) teardown();
+      setState('Idle');
+    };
+    ws.onmessage = function (event) {
+      var m;
+      try { m = JSON.parse(event.data); } catch (e) { return; }
+      if (m.type === 'ready') {
+        setServerStatus('Connected · ' + m.model, true);
+      } else if (m.type === 'partial') {
+        if (!gotFirst && firstSent) {
+          gotFirst = true;
+          els.first.textContent = seconds(performance.now() - firstSent);
+        }
+        els.partialText.textContent = (els.finalText.textContent ? ' ' : '') + m.text;
+      } else if (m.type === 'final') {
+        els.finalText.textContent = m.text;
+        els.partialText.textContent = '';
+        els.fin.textContent = seconds(performance.now() - stopAt);
+        els.rtf.textContent = m.rtf.toFixed(2);
+        els.audio.textContent = m.duration_s.toFixed(1) + ' s';
+        setState('Done');
+        ws.close();
+      } else if (m.type === 'error') {
+        els.hint.textContent = m.error;
+        setState('Error');
+      }
+    };
+    ws.onopen = function () {
+      navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
+        .then(function (stream) {
+          var context = new (window.AudioContext || window.webkitAudioContext)();
+          var url = URL.createObjectURL(new Blob([workletSource], { type: 'application/javascript' }));
+          return context.audioWorklet.addModule(url).then(function () {
+            URL.revokeObjectURL(url);
+            var source = context.createMediaStreamSource(stream);
+            var node = new AudioWorkletNode(context, 'capture');
+            var analyser = context.createAnalyser();
+            analyser.fftSize = 1024;
+            source.connect(analyser);
+            source.connect(node);
+            node.port.onmessage = function (e) {
+              if (ws.readyState !== WebSocket.OPEN) return;
+              if (!firstSent) firstSent = performance.now();
+              ws.send(e.data.buffer);
+            };
+            session = { stream: stream, context: context, node: node, ws: ws, stop: function () {
+              stopAt = performance.now();
+              setState('Finishing');
+              if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'stop' }));
+              teardown();
+            } };
+            ws.send(JSON.stringify({ type: 'start', sample_rate: 16000, cleanup: els.cleanup.value, language: els.language.value }));
+            startedAt = performance.now();
+            setTalking(true);
+            setState('Listening');
+            els.hint.textContent = 'Speak now. Press the button or the space bar to finish.';
+            drawLive(analyser);
+          });
+        })
+        .catch(function (e) {
+          setState('Idle');
+          els.hint.textContent = e && e.name === 'NotAllowedError'
+            ? 'Microphone permission was denied. Allow it in the address bar and try again.'
+            : 'Could not start the microphone: ' + (e && e.message ? e.message : e);
+          ws.close();
+        });
+    };
+  }
+
+  function toggle() {
+    if (session) session.stop(); else start();
+  }
+
+  els.talk.addEventListener('click', toggle);
+  document.addEventListener('keydown', function (e) {
+    if (e.code !== 'Space' || e.repeat) return;
+    var tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (/INPUT|SELECT|TEXTAREA|BUTTON/.test(tag)) return;
+    e.preventDefault();
+    toggle();
+  });
+
+  els.check.addEventListener('click', checkServer);
+
+  els.file.addEventListener('change', function () {
+    var f = els.file.files[0];
+    if (!f) return;
+    resetMeasurements();
+    els.finalText.textContent = '';
+    els.partialText.textContent = '';
+    setState('Transcribing');
+    var query = '?timestamps=true&cleanup=' + encodeURIComponent(els.cleanup.value) + (els.language.value ? '&language=' + encodeURIComponent(els.language.value) : '');
+    var t0 = performance.now();
+    fetch('http://' + base() + '/v1/transcriptions' + query, { method: 'POST', body: f })
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.body.error || 'Request failed');
+        var b = res.body;
+        els.finalText.textContent = b.text;
+        els.fin.textContent = seconds(performance.now() - t0);
+        els.rtf.textContent = b.rtf.toFixed(2);
+        els.audio.textContent = b.duration_s.toFixed(1) + ' s';
+        (b.segments || []).forEach(function (s) {
+          var li = document.createElement('li');
+          li.textContent = s.start.toFixed(2) + ' – ' + s.end.toFixed(2) + '  ' + s.text;
+          els.segmentList.appendChild(li);
+        });
+        if (b.segments && b.segments.length) els.segments.classList.remove('hidden');
+        setState('Done');
+      })
+      .catch(function (e) {
+        setState('Error');
+        els.hint.textContent = e instanceof TypeError ? 'Could not reach the server. Is it running with --allow-origin for this site?' : e.message;
+      })
+      .then(function () { els.file.value = ''; });
+  });
+
+  window.addEventListener('resize', function () { if (!session) drawIdle(); });
+  drawIdle();
+  if (!window.isSecureContext || !navigator.mediaDevices) {
+    els.hint.textContent = 'Microphone access needs a secure page (https or localhost).';
+  }
+})();
+</script>
+</body>
+</html>
