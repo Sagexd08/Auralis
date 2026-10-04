@@ -28,7 +28,7 @@
   }
   .blk { position: relative; display: flex; flex-direction: column; gap: .25rem; border-radius: 1rem; background: rgba(255,255,255,.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,.10); padding: 1rem; }
   .blk b { font-size: .95rem; font-weight: 600; }
-  .blk i { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .7rem; color: rgba(255,255,255,.6); }
+  .blk i { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .75rem; color: rgba(255,255,255,.6); }
   .blk span { margin-top: .5rem; font-size: .8125rem; line-height: 1.55; color: rgba(255,255,255,.7); }
   .blk-key { background: #fff; box-shadow: none; }
   .blk-key b { color: #010101; } .blk-key i { color: rgba(1,1,1,.65); } .blk-key span { color: rgba(1,1,1,.78); }
@@ -38,13 +38,13 @@
   pre { scrollbar-color: rgba(255,255,255,.25) transparent; }
   kbd, code, pre, .font-mono { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
   .blk { counter-increment: stage; }
-  .blk::after { content: counter(stage); position: absolute; top: .85rem; right: .95rem; font-family: 'Geist Mono', monospace; font-size: .7rem; color: rgba(255,255,255,.35); font-variant-numeric: tabular-nums; }
+  .blk::after { content: counter(stage); position: absolute; top: .85rem; right: .95rem; font-family: 'Geist Mono', monospace; font-size: .75rem; color: rgba(255,255,255,.35); font-variant-numeric: tabular-nums; }
   .blk-key::after { color: rgba(1,1,1,.4); }
   #pipe { counter-reset: stage; }
   .blk { transition: outline-color .3s, background-color .3s; outline: 2px solid transparent; outline-offset: 2px; }
   .blk.on { outline-color: #fff; background: rgba(255,255,255,.10); }
   .blk-key.on { background: #fff; }
-  .link { display: flex; align-items: center; gap: .75rem; margin: 1rem 0; font-size: .7rem; color: rgba(255,255,255,.5); }
+  .link { display: flex; align-items: center; gap: .75rem; margin: 1rem 0; font-size: .75rem; color: rgba(255,255,255,.5); }
   .link::before, .link::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.12); }
   .kcap { font-size: .75rem; border-radius: .5rem; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); padding: .3rem .6rem; transition: background-color .15s, color .15s, transform .15s, border-color .15s; }
   .kcap.down { background: #fff; color: #010101; border-color: #fff; transform: translateY(1px); }
@@ -166,7 +166,7 @@
       <div id="demo" class="demo overflow-hidden rounded-2xl bg-[#0c0c0d] ring-1 ring-white/15 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]">
         <div class="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <span class="text-xs text-white/60">Notes</span>
-          <span id="demo-status" class="rounded-full bg-white/10 px-3 py-1 font-mono text-[11px] text-white/80">Idle</span>
+          <span id="demo-status" class="rounded-full bg-white/10 px-3 py-1 font-mono text-xs text-white/80">Idle</span>
         </div>
         <div class="min-h-[11rem] px-5 py-6 sm:px-7 sm:py-8">
           <p class="text-xl leading-snug tracking-tight sm:text-2xl lg:text-[1.75rem]"><span id="demo-text"></span><span class="caret" aria-hidden="true"></span></p>
@@ -284,7 +284,7 @@
 
     <a href="whitepaper.html" class="rv paper group block lg:col-span-7" aria-label="Open the Auralis whitepaper">
       <div class="paper-sheet rounded-2xl bg-[#f6f6f4] p-7 text-[#0b0b0b] sm:p-10">
-        <p class="font-mono text-[11px] text-black/60">Auralis · Whitepaper · Phase 1</p>
+        <p class="font-mono text-xs text-black/60">Auralis · Whitepaper · Phase 1</p>
         <h3 class="mt-4 max-w-[18ch] text-3xl font-semibold leading-[1.05] tracking-tight sm:text-4xl">Local-first push-to-talk dictation</h3>
         <p class="mt-6 max-w-[52ch] text-sm leading-relaxed text-black/75 sm:text-[0.95rem]">Auralis turns speech into typed text in any Windows application. Every stage, from microphone capture to keystroke injection, runs on the user’s own machine. No audio or text is sent to a cloud service, and the software collects no telemetry.</p>
         <ul class="mt-8 grid gap-x-8 gap-y-1.5 border-t border-black/15 pt-5 font-mono text-xs text-black/70 sm:grid-cols-2">
