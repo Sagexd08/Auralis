@@ -6,6 +6,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+MAX_STEPS = 2048
+
+
 @dataclass
 class ModelConfig:
     vocab_size: int
@@ -22,7 +25,8 @@ class ModelConfig:
 
 
 def subsampled_length(lengths: torch.Tensor) -> torch.Tensor:
-    return ((lengths - 1) // 2) // 2 + 1
+    halved = torch.div(lengths - 1, 2, rounding_mode="trunc")
+    return torch.div(halved, 2, rounding_mode="trunc") + 1
 
 
 class Subsampling(nn.Module):
@@ -106,12 +110,17 @@ class AuralisSTT(nn.Module):
         self.blocks = nn.ModuleList(ConformerBlock(cfg) for _ in range(cfg.n_layers))
         self.dropout = nn.Dropout(cfg.dropout)
         self.head = nn.Linear(cfg.d_model, cfg.vocab_size)
+        self.register_buffer("positions", sinusoidal(MAX_STEPS, cfg.d_model, "cpu"), persistent=False)
+        self.register_buffer("step_index", torch.arange(MAX_STEPS), persistent=False)
 
     def forward(self, feats: torch.Tensor, lengths: torch.Tensor):
         x = self.subsample(feats)
-        out_lengths = subsampled_length(lengths).clamp(max=x.shape[1])
-        x = self.dropout(x * math.sqrt(self.cfg.d_model) + sinusoidal(x.shape[1], self.cfg.d_model, x.device))
-        pad_mask = torch.arange(x.shape[1], device=x.device).unsqueeze(0) >= out_lengths.unsqueeze(1)
+        steps = x.shape[1]
+        if steps > MAX_STEPS:
+            raise ValueError(f"input has {steps} encoder steps; the limit is {MAX_STEPS} (about 80 s of audio)")
+        out_lengths = subsampled_length(lengths).clamp(max=steps)
+        x = self.dropout(x * math.sqrt(self.cfg.d_model) + self.positions[:steps])
+        pad_mask = self.step_index[:steps].unsqueeze(0) >= out_lengths.unsqueeze(1)
         for block in self.blocks:
             x = block(x, pad_mask)
         return F.log_softmax(self.head(x), dim=-1), out_lengths

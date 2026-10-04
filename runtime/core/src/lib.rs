@@ -1,4 +1,5 @@
 pub mod audio;
+pub mod auralis;
 pub mod denoise;
 pub mod frontend;
 pub mod resample;

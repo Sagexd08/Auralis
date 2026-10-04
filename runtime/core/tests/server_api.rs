@@ -150,6 +150,52 @@ fn websocket_streams_partials_then_a_final_transcript() {
 }
 
 #[test]
+fn serves_the_auralis_onnx_model_through_the_same_endpoints() {
+    let model = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/auralis_tiny/auralis.onnx");
+    let port = 18804;
+    let mut child = Command::new(env!("CARGO_BIN_EXE_auralis-server"))
+        .args(["--model", model.to_str().unwrap(), "--port", &port.to_string()])
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut banner = String::new();
+    BufReader::new(child.stdout.take().unwrap()).read_line(&mut banner).unwrap();
+    let _guard = Guard(child);
+    assert!(banner.contains("listening"), "unexpected banner: {banner:?}");
+
+    let (status, _, body) = http(port, "GET /healthz HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
+    assert_eq!(status, 200);
+    assert!(body.contains("auralis-onnx"), "{body}");
+
+    let (status, _, body) = http(port, "GET /v1/models HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
+    assert_eq!(status, 200);
+    let models: serde_json::Value = serde_json::from_str(&body).unwrap();
+    let active = models["data"].as_array().unwrap().iter().find(|m| m["active"] == true).unwrap();
+    assert_eq!(active["engine"], "auralis-onnx");
+    assert_eq!(active["languages"][0], "en");
+
+    let raw: Vec<f32> = std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/auralis_tiny/sample.f32"))
+        .unwrap()
+        .chunks_exact(4)
+        .map(|b| f32::from_le_bytes(b.try_into().unwrap()))
+        .collect();
+    let mut wav = Vec::new();
+    {
+        let spec = hound::WavSpec { channels: 1, sample_rate: 16_000, bits_per_sample: 16, sample_format: hound::SampleFormat::Int };
+        let mut writer = hound::WavWriter::new(std::io::Cursor::new(&mut wav), spec).unwrap();
+        for s in raw {
+            writer.write_sample((s.clamp(-1.0, 1.0) * 32767.0) as i16).unwrap();
+        }
+        writer.finalize().unwrap();
+    }
+    let (status, body) = post_wav(port, "?timestamps=true", &wav);
+    assert_eq!(status, 200, "{body}");
+    let v: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert!(v["model"].as_str().unwrap().ends_with("auralis.onnx"));
+    assert!(v["rtf"].as_f64().unwrap() > 0.0);
+}
+
+#[test]
 fn websocket_refuses_a_foreign_origin() {
     let Some(_guard) = start(18803, &[]) else { return };
     let (status, _, _) = http(

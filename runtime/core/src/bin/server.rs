@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use auralis_runtime::stt::{join_segments, Segment, SttEngine, Speech};
+use auralis_runtime::stt::{join_segments, load_engine, Segment, Speech};
 use auralis_runtime::text::{self, CleanupMode};
 use auralis_runtime::{denoise, resample, vad, wav};
 use clap::Parser;
@@ -450,7 +450,7 @@ fn route(app: Arc<App>, mut request: Request) {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    let engine: Box<dyn Speech> = Box::new(SttEngine::load(&args.model)?);
+    let engine: Box<dyn Speech> = load_engine(&args.model)?;
     let model_name = args.model.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     let model_dir = args.model.parent().map(PathBuf::from).unwrap_or_default();
 

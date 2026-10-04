@@ -148,7 +148,7 @@ pub fn apply_spoken_commands(text: &str, mode: CleanupMode) -> String {
     out = PARAGRAPH.replace_all(&out, NoExpand("\n\n")).to_string();
     out = NEWLINE.replace_all(&out, NoExpand("\n")).to_string();
     for (re, mark) in PUNCTUATION_RES.iter() {
-        out = re.replace_all(&out, NoExpand(*mark)).to_string();
+        out = re.replace_all(&out, NoExpand(mark)).to_string();
     }
     out = SPACES_BEFORE_PUNCT.replace_all(&out, "$1").to_string();
     out = SPACE_AFTER_OPEN.replace_all(&out, "(").to_string();
