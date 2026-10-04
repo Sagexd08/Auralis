@@ -11,6 +11,12 @@ pub struct AppConfig {
     pub model_file: String,
     pub mic_device: Option<String>,
     pub cleanup_mode: String,
+    #[serde(default = "existing_install_is_onboarded")]
+    pub onboarded: bool,
+}
+
+fn existing_install_is_onboarded() -> bool {
+    true
 }
 
 impl Default for AppConfig {
@@ -21,6 +27,7 @@ impl Default for AppConfig {
             model_file: "ggml-base.en-q5_1.bin".to_string(),
             mic_device: None,
             cleanup_mode: CleanupMode::default().as_str().to_string(),
+            onboarded: false,
         }
     }
 }
@@ -59,6 +66,13 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("auralis-config-test-{}", std::process::id()));
         let config = AppConfig::load(&dir);
         assert_eq!(config.push_to_talk_hotkey, "Ctrl+Space");
+    }
+
+    #[test]
+    fn fresh_install_is_not_onboarded_but_an_existing_config_file_is() {
+        assert!(!AppConfig::default().onboarded);
+        let old: AppConfig = serde_json::from_str(r#"{"push_to_talk_hotkey":"Ctrl+Space"}"#).unwrap();
+        assert!(old.onboarded, "configs saved before the welcome screen existed must not show it");
     }
 
     #[test]

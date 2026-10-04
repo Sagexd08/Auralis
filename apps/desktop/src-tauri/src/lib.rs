@@ -29,6 +29,7 @@ struct AppState {
     startup_warning: Mutex<Option<String>>,
     last_insertion: Arc<Mutex<Option<LastInsertion>>>,
     cleanup_mode: CleanupModeHandle,
+    last_status: Mutex<String>,
 }
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -79,6 +80,7 @@ fn plan_correction(previous: &LastInsertion, replacement: &str) -> Insertion {
 
 fn set_status(app: &AppHandle, text: impl Into<String>) {
     let text: String = text.into();
+    *lock(&app.state::<AppState>().last_status) = text.clone();
     let _ = app.emit("auralis://status", &text);
     if let Some(tray) = app.tray_by_id("main") {
         let _ = tray.set_tooltip(Some(format!("Auralis — {text}")));
@@ -315,6 +317,24 @@ fn show_settings_window(app: &AppHandle) {
     }
 }
 
+fn show_welcome_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("welcome") {
+        let _ = window.show();
+        let _ = window.set_focus();
+        return;
+    }
+
+    if let Err(e) = WebviewWindowBuilder::new(app, "welcome", WebviewUrl::App("welcome.html".into()))
+        .title("Welcome to Auralis")
+        .inner_size(500.0, 620.0)
+        .resizable(false)
+        .center()
+        .build()
+    {
+        error!("failed to open welcome window: {e}");
+    }
+}
+
 fn download_with_status(app: &AppHandle, file: &str) -> anyhow::Result<PathBuf> {
     let state = app.state::<AppState>();
     if state.downloading.swap(true, Ordering::SeqCst) {
@@ -356,6 +376,34 @@ fn get_config(state: tauri::State<AppState>) -> AppConfig {
     lock(&state.config).clone()
 }
 
+#[derive(serde::Serialize)]
+struct SetupState {
+    ready: bool,
+    downloading: bool,
+    status: String,
+}
+
+#[tauri::command]
+fn setup_state(state: tauri::State<AppState>) -> SetupState {
+    SetupState {
+        ready: lock(&state.pipeline).is_some(),
+        downloading: state.downloading.load(Ordering::SeqCst),
+        status: lock(&state.last_status).clone(),
+    }
+}
+
+#[tauri::command]
+fn complete_onboarding(state: tauri::State<AppState>) -> Result<(), String> {
+    let mut config = lock(&state.config);
+    config.onboarded = true;
+    config.save(&state.config_dir).map_err(|e| format!("couldn't save: {e}"))
+}
+
+#[tauri::command]
+fn open_settings(app: AppHandle) {
+    show_settings_window(&app);
+}
+
 #[tauri::command]
 fn get_startup_warning(state: tauri::State<AppState>) -> Option<String> {
     lock(&state.startup_warning).clone()
@@ -394,8 +442,9 @@ fn list_mic_devices() -> Vec<String> {
 }
 
 #[tauri::command]
-async fn save_config(app: AppHandle, new_config: AppConfig) -> Result<(), String> {
+async fn save_config(app: AppHandle, mut new_config: AppConfig) -> Result<(), String> {
     let state = app.state::<AppState>();
+    new_config.onboarded = lock(&state.config).onboarded;
 
     let ptt = hotkey::parse(&new_config.push_to_talk_hotkey).map_err(|e| e.to_string())?;
     let toggle = hotkey::parse(&new_config.toggle_hotkey).map_err(|e| e.to_string())?;
@@ -475,7 +524,10 @@ pub fn run() {
             download_model,
             list_mic_devices,
             list_cleanup_modes,
-            get_startup_warning
+            get_startup_warning,
+            setup_state,
+            complete_onboarding,
+            open_settings
         ])
         .setup(|app| {
             let config_dir = app.path().app_config_dir().unwrap_or_else(|_| PathBuf::from("."));
@@ -494,11 +546,13 @@ pub fn run() {
                 startup_warning: Mutex::new(None),
                 last_insertion: Arc::new(Mutex::new(None)),
                 cleanup_mode,
+                last_status: Mutex::new("Idle".to_string()),
             });
 
             let settings_item = MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
+            let welcome_item = MenuItem::with_id(app, "welcome", "Welcome guide", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&settings_item, &quit_item])?;
+            let menu = Menu::with_items(app, &[&welcome_item, &settings_item, &quit_item])?;
 
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().cloned().unwrap())
@@ -506,6 +560,7 @@ pub fn run() {
                 .tooltip("Auralis")
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "settings" => show_settings_window(app),
+                    "welcome" => show_welcome_window(app),
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -519,6 +574,10 @@ pub fn run() {
                     "Couldn't register your hotkeys ({e}). Another app may be using them — pick different ones below."
                 ));
                 show_settings_window(app.handle());
+            }
+
+            if !config.onboarded {
+                show_welcome_window(app.handle());
             }
 
             let handle = app.handle().clone();

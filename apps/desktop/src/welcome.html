@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Welcome to Auralis</title>
+    <style>
+      :root {
+        --bg: #0d0b09; --panel: #16130f; --raised: #1d1913; --line: rgba(255, 255, 255, 0.10);
+        --text: #f4f1ec; --text-2: rgba(244, 241, 236, 0.76); --text-3: rgba(244, 241, 236, 0.58);
+        --accent: #e3ad5f; --accent-ink: #1a1308; --ok: #8fd18f; --err: #ff9b8f;
+        --ease: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: flex; flex-direction: column;
+        font: 14px/1.55 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+        background: radial-gradient(120% 60% at 50% 0%, #1d1a10 0%, var(--bg) 60%);
+        color: var(--text); -webkit-font-smoothing: antialiased;
+      }
+      ::selection { background: var(--accent); color: var(--accent-ink); }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+      header { display: flex; align-items: center; justify-content: space-between; padding: 18px 26px 0; }
+      .brand { display: flex; align-items: center; gap: 9px; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+      .brand svg { width: 22px; height: 22px; }
+      #dots { display: flex; gap: 7px; }
+      #dots i { width: 22px; height: 4px; border-radius: 2px; background: var(--line); transition: background-color 0.3s, width 0.4s var(--ease); }
+      #dots i.done { background: rgba(227, 173, 95, 0.55); }
+      #dots i.now { background: var(--accent); width: 34px; }
+
+      main { flex: 1; position: relative; overflow: hidden; }
+      .step { position: absolute; inset: 0; display: none; flex-direction: column; padding: 30px 26px 8px; overflow-y: auto; }
+      .step.on { display: flex; animation: enter 0.55s var(--ease) both; }
+      @keyframes enter { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+      h1 { margin: 0; font-size: 28px; line-height: 1.12; letter-spacing: -0.03em; font-weight: 600; max-width: 14ch; }
+      .lead { margin: 12px 0 0; color: var(--text-2); max-width: 40ch; }
+      .small { font-size: 12.5px; color: var(--text-3); }
+
+      .card { margin-top: 24px; padding: 18px; background: var(--panel); border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line); }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .keys { display: inline-flex; align-items: center; gap: 6px; }
+      kbd { font: 500 12.5px ui-monospace, "Cascadia Mono", Consolas, monospace; padding: 5px 9px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 2px 0 rgba(0, 0, 0, 0.5); }
+      .plus { color: var(--text-3); }
+      .hk + .hk { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+      .hk b { display: block; font-weight: 600; }
+      .hk span { color: var(--text-3); font-size: 13px; }
+
+      #bar { height: 6px; border-radius: 3px; background: var(--raised); overflow: hidden; margin-top: 14px; }
+      #bar i { display: block; height: 100%; width: 0%; background: var(--accent); border-radius: 3px; transition: width 0.3s linear; }
+      #bar.indeterminate i { width: 35%; animation: slide 1.2s ease-in-out infinite; }
+      @keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+      #model-line { display: flex; align-items: center; gap: 10px; }
+      #model-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 0.9s ease-in-out infinite; flex: none; }
+      #model-dot.ok { background: var(--ok); animation: none; }
+      #model-dot.err { background: var(--err); animation: none; }
+      @keyframes pulse { 50% { opacity: 0.35; } }
+
+      textarea {
+        width: 100%; min-height: 128px; resize: none; padding: 14px; font: 15px/1.5 inherit; color: var(--text);
+        background: var(--panel); border: 1px solid var(--line); border-radius: 14px; transition: border-color 0.2s;
+      }
+      textarea:focus { outline: none; border-color: var(--accent); }
+      #pill { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 6px 12px; border-radius: 999px; background: var(--raised); box-shadow: inset 0 0 0 1px var(--line); font-size: 12.5px; color: var(--text-2); }
+      #pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); }
+      #pill.listening i { background: #ff6b5e; animation: pulse 0.9s ease-in-out infinite; }
+      #pill.busy i { background: var(--accent); animation: pulse 0.6s ease-in-out infinite; }
+      #pill.ok i { background: var(--ok); }
+      #pill.error i { background: var(--err); }
+
+      ul.tips { margin: 20px 0 0; padding: 0; list-style: none; }
+      ul.tips li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); color: var(--text-2); }
+      ul.tips li:first-child { border-top: 0; }
+      ul.tips svg { width: 18px; height: 18px; color: var(--accent); margin-top: 2px; }
+      ul.tips b { color: var(--text); font-weight: 600; }
+
+      footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 26px 20px; }
+      button {
+        font: inherit; cursor: pointer; color: var(--text); background: var(--raised);
+        border: 1px solid var(--line); border-radius: 999px; padding: 10px 20px;
+        transition: background-color 0.2s, transform 0.2s var(--ease), opacity 0.2s;
+      }
+      button:hover:not(:disabled) { background: #26211a; }
+      button:active:not(:disabled) { transform: scale(0.97); }
+      button:disabled { opacity: 0.45; cursor: default; }
+      button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+      button.primary:hover:not(:disabled) { background: #efbd75; }
+      button.link { background: none; border: 0; padding: 10px 4px; color: var(--text-3); }
+      button.link:hover:not(:disabled) { background: none; color: var(--text); }
+
+      .step.on.back { animation-name: enter-back; }
+      @keyframes enter-back { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+      kbd { transition: background-color 0.12s, color 0.12s, transform 0.12s, box-shadow 0.12s; }
+      kbd.down { background: var(--accent); color: var(--accent-ink); transform: translateY(2px); box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 rgba(0, 0, 0, 0); }
+      .demo-keys kbd { animation: tap 2.4s var(--ease) infinite; }
+      .demo-keys kbd + .plus + kbd { animation-delay: 0.15s; }
+      @keyframes tap { 0%, 55%, 100% { background: rgba(255, 255, 255, 0.08); color: var(--text); transform: none; } 15%, 40% { background: var(--accent); color: var(--accent-ink); transform: translateY(2px); } }
+
+      #meter { display: flex; align-items: flex-end; gap: 3px; height: 54px; margin-top: 16px; }
+      #meter i { flex: 1; min-width: 0; height: 6px; border-radius: 3px; background: var(--raised); transition: height 0.08s linear, background-color 0.15s; }
+      #meter i.lit { background: var(--accent); }
+      #meter i.hot { background: #ff8a6b; }
+      #mic-line { display: flex; align-items: center; gap: 10px; }
+      #mic-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-3); flex: none; }
+      #mic-dot.ok { background: var(--ok); } #mic-dot.err { background: var(--err); }
+      #mic-text { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      #success { display: none; margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(143, 209, 143, 0.09); box-shadow: inset 0 0 0 1px rgba(143, 209, 143, 0.35); color: var(--text); animation: enter 0.5s var(--ease) both; }
+      #success b { color: var(--ok); font-weight: 600; }
+      #success span { display: block; margin-top: 2px; color: var(--text-2); font-size: 13px; }
+      #practice-wrap { position: relative; }
+      #practice-wrap.live textarea { border-color: var(--accent); }
+      #wave { position: absolute; right: 12px; bottom: 12px; display: none; align-items: center; gap: 2px; height: 18px; }
+      #practice-wrap.live #wave { display: flex; }
+      #wave i { display: block; width: 3px; height: 4px; border-radius: 2px; background: var(--accent); animation: wv 0.8s ease-in-out infinite; }
+      #wave i:nth-child(2) { animation-delay: -0.2s; } #wave i:nth-child(3) { animation-delay: -0.5s; } #wave i:nth-child(4) { animation-delay: -0.1s; } #wave i:nth-child(5) { animation-delay: -0.35s; }
+      @keyframes wv { 0%, 100% { height: 4px; } 50% { height: 17px; } }
+      #skip { margin-left: auto; margin-right: 8px; }
+      @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M 128 128 C 128 198.692 70.692 256 0 256 C 0 185.308 57.308 128 128 128 Z M 128 128 C 198.692 128 256 185.308 256 256 C 185.308 256 128 198.692 128 128 Z M 0 0 C 70.692 0 128 57.308 128 128 C 57.308 128 0 70.692 0 0 Z M 256 0 C 256 70.692 198.692 128 128 128 C 128 57.308 185.308 0 256 0 Z" /></svg>
+        auralis
+      </div>
+      <div id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    </header>
+
+    <main>
+      <section class="step" data-step="0" aria-labelledby="h0">
+        <h1 id="h0">Getting Auralis ready.</h1>
+        <p class="lead">Auralis turns speech into text on this PC. It needs a speech model first. It downloads once and stays here.</p>
+        <div class="card">
+          <div id="model-line"><span id="model-dot"></span><span id="model-text">Starting…</span></div>
+          <div id="bar" class="indeterminate"><i></i></div>
+          <p class="small" style="margin: 12px 0 0">No audio or text ever leaves your computer.</p>
+        </div>
+      </section>
+
+      <section class="step" data-step="1" aria-labelledby="h1">
+        <h1 id="h1">Hold. Speak. Release.</h1>
+        <p class="lead">Two shortcuts work in any app.</p>
+        <div class="card">
+          <div class="hk">
+            <div class="row"><b>Push to talk</b><span class="keys demo-keys" id="k-ptt"></span></div>
+            <span>Hold while you speak, let go and the text appears.</span>
+          </div>
+          <div class="hk">
+            <div class="row"><b>Hands-free</b><span class="keys" id="k-toggle"></span></div>
+            <span>Tap to start, tap again to stop.</span>
+          </div>
+        </div>
+        <p class="small" style="margin-top: 14px">Another app using one of these? <button class="link" id="open-settings" type="button" style="padding: 0; text-decoration: underline">Change shortcuts</button></p>
+      </section>
+
+      <section class="step" data-step="mic" aria-labelledby="hm">
+        <h1 id="hm">Check your microphone.</h1>
+        <p class="lead">Say a few words. The bars should move.</p>
+        <div class="card">
+          <div id="mic-line"><span id="mic-dot"></span><span id="mic-text">Opening the microphone…</span></div>
+          <div id="meter" aria-hidden="true"></div>
+          <p class="small" id="mic-help" style="margin: 14px 0 0">Auralis uses your default input device. You can pick another one in Settings.</p>
+        </div>
+        <p class="small" style="margin-top: 14px">This check stays on your PC and nothing is recorded.</p>
+      </section>
+
+      <section class="step" data-step="2" aria-labelledby="h2">
+        <h1 id="h2">Try it here.</h1>
+        <p class="lead">Click the box, hold <span id="try-keys"></span>, say a sentence, then let go.</p>
+        <div style="margin-top: 22px">
+          <label for="practice" class="small" style="display: block; margin-bottom: 6px">Practice box</label>
+          <div id="practice-wrap"><textarea id="practice" placeholder="Your words will appear here."></textarea><span id="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span></div>
+          <div id="pill" role="status" aria-live="polite"><i></i><span>Ready</span></div>
+          <div id="success" role="status"><b>That was Auralis.</b><span>Now try a correction: say “actually, change” and the word you want swapped, then the new one.</span></div>
+        </div>
+        <p class="small" style="margin: 14px 0 0">Nothing typed? Check that Windows allows microphone access for desktop apps (Settings, Privacy, Microphone), then try again.</p>
+      </section>
+
+      <section class="step" data-step="3" aria-labelledby="h3">
+        <h1 id="h3">You’re set.</h1>
+        <p class="lead">Auralis lives in your system tray, bottom right.</p>
+        <ul class="tips">
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg>
+            <span><b>Fix a mistake out loud.</b> Say “actually, change Rahul to Rohan” within 45 seconds and Auralis retypes the sentence.</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h16"/></svg>
+            <span><b>Choose how much it rewrites.</b> Settings has raw, clean, polished and developer modes.</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+            <span><b>Private by design.</b> Transcription runs on this PC with no cloud and no telemetry.</span>
+          </li>
+        </ul>
+        <p class="small" style="margin-top: 8px">Reopen this guide anytime from the tray menu.</p>
+      </section>
+    </main>
+
+    <footer>
+      <button id="back" class="link" type="button">Back</button>
+      <button id="skip" class="link" type="button">Skip guide</button>
+      <button id="next" class="primary" type="button">Continue</button>
+    </footer>
+
+    <script>
+      const { invoke } = window.__TAURI__.core;
+      const { listen } = window.__TAURI__.event;
+      const { getCurrentWindow } = window.__TAURI__.window;
+
+      const steps = Array.from(document.querySelectorAll(".step"));
+      const dots = Array.from(document.querySelectorAll("#dots i"));
+      const back = document.getElementById("back");
+      const next = document.getElementById("next");
+      const modelDot = document.getElementById("model-dot");
+      const modelText = document.getElementById("model-text");
+      const bar = document.getElementById("bar");
+      const pill = document.getElementById("pill");
+
+      let current = 0;
+      let ready = false;
+
+      function renderKeys(el, combo) {
+        el.innerHTML = "";
+        combo.split("+").forEach((part, i) => {
+          if (i) {
+            const plus = document.createElement("span");
+            plus.className = "plus";
+            plus.textContent = "+";
+            el.appendChild(plus);
+          }
+          const k = document.createElement("kbd");
+          k.textContent = part.trim();
+          el.appendChild(k);
+        });
+      }
+
+      function show(index) {
+        const previous = current;
+        current = Math.max(0, Math.min(steps.length - 1, index));
+        steps.forEach((s, i) => {
+          s.classList.toggle("on", i === current);
+          s.classList.toggle("back", current < previous);
+        });
+        dots.forEach((d, i) => {
+          d.className = i < current ? "done" : i === current ? "now" : "";
+        });
+        back.style.visibility = current === 0 ? "hidden" : "visible";
+        next.textContent = current === steps.length - 1 ? "Start using Auralis" : current === 3 ? "Done trying" : "Continue";
+        updateNext();
+        const heading = steps[current].querySelector("h1");
+        if (heading) heading.setAttribute("tabindex", "-1"), heading.focus({ preventScroll: true });
+        if (current === 3) setTimeout(() => document.getElementById("practice").focus(), 250);
+        if (current === 2) startMic(); else stopMic();
+      }
+
+      function updateNext() {
+        next.disabled = current === 0 && !ready;
+      }
+
+      function kindOf(s) {
+        if (s.startsWith("Listening")) return "listening";
+        if (/^(Processing|Downloading|Loading)/.test(s)) return "busy";
+        if (/(error|failed|unavailable|not ready|No speech)/i.test(s)) return "error";
+        return "ok";
+      }
+
+      function applyStatus(text) {
+        pill.className = kindOf(text);
+        pill.querySelector("span").textContent = text === "Idle" ? "Ready" : text;
+        if (/^Model unavailable/.test(text)) {
+          modelDot.className = "err";
+          modelText.textContent = "The model couldn’t be prepared. Check your internet connection and restart Auralis.";
+          bar.style.display = "none";
+        } else if (/^Downloading/.test(text)) {
+          modelText.textContent = text.replace("Downloading model", "Downloading the speech model");
+        } else if (/^Loading/.test(text)) {
+          modelText.textContent = "Loading the model…";
+          bar.className = "indeterminate";
+          bar.firstElementChild.style.width = "";
+        }
+      }
+
+      function markReady() {
+        ready = true;
+        modelDot.className = "ok";
+        modelText.textContent = "Ready. The model is on this PC.";
+        bar.className = "";
+        bar.firstElementChild.style.width = "100%";
+        updateNext();
+      }
+
+      listen("auralis://status", (event) => {
+        applyStatus(event.payload);
+        if (event.payload === "Idle" && !ready) poll();
+      });
+
+      listen("auralis://model-progress", (event) => {
+        const { downloaded, total } = event.payload;
+        if (total) {
+          bar.className = "";
+          bar.firstElementChild.style.width = Math.round((downloaded * 100) / total) + "%";
+        }
+      });
+
+      async function poll() {
+        try {
+          const s = await invoke("setup_state");
+          if (s.ready) return markReady();
+          applyStatus(s.status);
+        } catch (_) {}
+      }
+
+      back.addEventListener("click", () => show(current - 1));
+      next.addEventListener("click", async () => {
+        if (current < steps.length - 1) return show(current + 1);
+        try {
+          await invoke("complete_onboarding");
+        } catch (_) {}
+        getCurrentWindow().close();
+      });
+      document.getElementById("open-settings").addEventListener("click", () => invoke("open_settings"));
+
+
+      // ---- microphone level meter (runs in this window only, never recorded) ----
+      const meter = document.getElementById("meter");
+      const micDot = document.getElementById("mic-dot");
+      const micText = document.getElementById("mic-text");
+      const micHelp = document.getElementById("mic-help");
+      const BARS = 28;
+      for (let i = 0; i < BARS; i++) meter.appendChild(document.createElement("i"));
+      const bars = Array.from(meter.children);
+      let micStream = null, micCtx = null, micRaf = 0, heardVoice = false;
+
+      function paintMeter(level) {
+        const lit = Math.round(Math.min(1, level) * BARS);
+        bars.forEach((b, i) => {
+          const on = i < lit;
+          b.className = on ? (i > BARS * 0.82 ? "hot" : "lit") : "";
+          b.style.height = on ? 8 + (i / BARS) * 46 + "px" : "6px";
+        });
+      }
+
+      async function startMic() {
+        stopMic();
+        heardVoice = false;
+        micDot.className = "";
+        micText.textContent = "Opening the microphone…";
+        paintMeter(0);
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false } });
+          if (current !== 2) return stopMic();
+          const label = micStream.getAudioTracks()[0]?.label || "default microphone";
+          micDot.className = "ok";
+          micText.textContent = `Listening on ${label}`;
+          micCtx = new AudioContext();
+          const analyser = micCtx.createAnalyser();
+          analyser.fftSize = 1024;
+          micCtx.createMediaStreamSource(micStream).connect(analyser);
+          const data = new Uint8Array(analyser.fftSize);
+          const loop = () => {
+            analyser.getByteTimeDomainData(data);
+            let peak = 0;
+            for (const v of data) peak = Math.max(peak, Math.abs(v - 128) / 128);
+            const level = Math.min(1, peak * 2.4);
+            paintMeter(level);
+            if (level > 0.25 && !heardVoice) {
+              heardVoice = true;
+              micText.textContent = "Great, we can hear you.";
+              micHelp.textContent = "If the bars hit the red end a lot, move back a little or lower the input volume.";
+            }
+            micRaf = requestAnimationFrame(loop);
+          };
+          loop();
+        } catch (e) {
+          micDot.className = "err";
+          micText.textContent = "Couldn’t open the microphone from this window.";
+          micHelp.textContent =
+            "Check Windows Settings, Privacy, Microphone, and allow desktop apps. Dictation may still work. You can test it in the next step.";
+        }
+      }
+
+      function stopMic() {
+        cancelAnimationFrame(micRaf);
+        if (micStream) micStream.getTracks().forEach((t) => t.stop());
+        if (micCtx) micCtx.close().catch(() => {});
+        micStream = micCtx = null;
+        paintMeter(0);
+      }
+
+      // ---- live key caps: highlight whatever the user is actually pressing ----
+      const KEYMAP = { Control: "ctrl", Shift: "shift", Alt: "alt", Meta: "super", " ": "space" };
+      const pressed = new Set();
+      function syncKeys() {
+        document.querySelectorAll("kbd").forEach((k) => {
+          const name = k.textContent.trim().toLowerCase();
+          k.classList.toggle("down", pressed.has(name));
+        });
+        document.querySelectorAll(".demo-keys").forEach((el) => el.classList.toggle("paused", pressed.size > 0));
+        document.querySelectorAll(".demo-keys kbd").forEach((k) => {
+          k.style.animationPlayState = pressed.size > 0 ? "paused" : "running";
+        });
+      }
+      window.addEventListener("keydown", (e) => {
+        pressed.add(KEYMAP[e.key] || e.key.toLowerCase());
+        syncKeys();
+        if (e.key === "Enter" && e.target.tagName !== "TEXTAREA" && e.target.tagName !== "BUTTON" && !next.disabled) next.click();
+      });
+      window.addEventListener("keyup", (e) => { pressed.delete(KEYMAP[e.key] || e.key.toLowerCase()); syncKeys(); });
+      window.addEventListener("blur", () => { pressed.clear(); syncKeys(); });
+
+      // ---- practice box: celebrate the first real dictation ----
+      const practice = document.getElementById("practice");
+      const practiceWrap = document.getElementById("practice-wrap");
+      const success = document.getElementById("success");
+      let sawListening = false, celebrated = false;
+      listen("auralis://status", (event) => {
+        if (event.payload.startsWith("Listening")) sawListening = true;
+        practiceWrap.classList.toggle("live", event.payload.startsWith("Listening") && current === 3);
+      });
+      practice.addEventListener("input", () => {
+        if (!sawListening || celebrated || !practice.value.trim()) return;
+        celebrated = true;
+        success.style.display = "block";
+      });
+
+      document.getElementById("skip").addEventListener("click", async () => {
+        stopMic();
+        try { await invoke("complete_onboarding"); } catch (_) {}
+        getCurrentWindow().close();
+      });
+      window.addEventListener("pagehide", stopMic);
+
+      (async function init() {
+        try {
+          const config = await invoke("get_config");
+          renderKeys(document.getElementById("k-ptt"), config.push_to_talk_hotkey);
+          renderKeys(document.getElementById("k-toggle"), config.toggle_hotkey);
+          renderKeys(document.getElementById("try-keys"), config.push_to_talk_hotkey);
+        } catch (_) {}
+        show(0);
+        await poll();
+        setInterval(() => { if (!ready) poll(); }, 1500);
+      })();
+    </script>
+  </body>
+</html>
