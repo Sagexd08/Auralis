@@ -21,3 +21,6 @@ benchmarks/reports/*.md
 .claude/
 skills-lock.json
 launch-video/
+
+# internal product requirements doc
+auralis_prd_end_to_end.md
