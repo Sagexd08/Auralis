@@ -296,6 +296,7 @@ fn stream_session(app: Arc<App>, request: Request) {
     let mut language: Option<String> = None;
     let mut samples: Vec<f32> = Vec::new();
     let mut decoded_len = 0usize;
+    let mut last_decode_s = 0.0f64;
     let mut finished = false;
 
     while !finished {
@@ -311,11 +312,12 @@ fn stream_session(app: Arc<App>, request: Request) {
                     break;
                 }
                 let fresh = (samples.len() - decoded_len) as f64 / rate as f64;
-                if fresh >= PARTIAL_EVERY_SECONDS {
+                if fresh >= PARTIAL_EVERY_SECONDS.max(last_decode_s * 1.5) {
                     decoded_len = samples.len();
                     let started = Instant::now();
                     match recognize(&app, &samples, rate, true, language.as_deref()) {
                         Ok(segments) => {
+                            last_decode_s = started.elapsed().as_secs_f64();
                             app.metrics.stream_partials.fetch_add(1, Ordering::Relaxed);
                             let ok = send(
                                 &mut ws,
