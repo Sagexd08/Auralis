@@ -4,8 +4,26 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 
 const BEAM_SIZE: i32 = 5;
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Segment {
+    pub start_s: f64,
+    pub end_s: f64,
+    pub text: String,
+}
+
+pub trait Speech: Send + Sync {
+    fn segments(&self, samples_16k: &[f32], language: Option<&str>) -> Result<Vec<Segment>>;
+    fn languages(&self) -> Vec<String>;
+    fn engine_name(&self) -> &'static str;
+}
+
+pub fn join_segments(segments: &[Segment]) -> String {
+    segments.iter().map(|s| s.text.as_str()).collect::<String>().trim().to_string()
+}
+
 pub struct SttEngine {
     context: WhisperContext,
+    english_only: bool,
 }
 
 impl SttEngine {
@@ -18,10 +36,32 @@ impl SttEngine {
             .context("model path is not valid UTF-8")?;
         let context = WhisperContext::new_with_params(path_str, WhisperContextParameters::default())
             .context("failed to load whisper model")?;
-        Ok(Self { context })
+        let english_only = model_path
+            .file_name()
+            .map(|n| n.to_string_lossy().contains(".en"))
+            .unwrap_or(false);
+        Ok(Self { context, english_only })
     }
 
     pub fn transcribe(&self, samples_16k: &[f32]) -> Result<String> {
+        Ok(join_segments(&self.segments(samples_16k, None)?))
+    }
+}
+
+impl Speech for SttEngine {
+    fn languages(&self) -> Vec<String> {
+        if self.english_only {
+            vec!["en".to_string()]
+        } else {
+            vec!["auto".to_string()]
+        }
+    }
+
+    fn engine_name(&self) -> &'static str {
+        "whisper.cpp"
+    }
+
+    fn segments(&self, samples_16k: &[f32], language: Option<&str>) -> Result<Vec<Segment>> {
         let mut state = self.context.create_state().context("failed to create whisper state")?;
 
         let n_threads = std::thread::available_parallelism()
@@ -38,7 +78,8 @@ impl SttEngine {
         params.set_print_special(false);
         params.set_print_realtime(false);
         params.set_print_timestamps(false);
-        params.set_language(Some("en"));
+        let lang = if self.english_only { "en" } else { language.unwrap_or("auto") };
+        params.set_language(Some(lang));
 
         params.set_no_context(true);
 
@@ -56,11 +97,13 @@ impl SttEngine {
             .context("whisper inference failed")?;
 
         let num_segments = state.full_n_segments().context("failed to read segment count")?;
-        let mut text = String::new();
+        let mut out = Vec::new();
         for i in 0..num_segments {
-            text.push_str(&state.full_get_segment_text(i).context("failed to read segment text")?);
+            let text = state.full_get_segment_text(i).context("failed to read segment text")?;
+            let t0 = state.full_get_segment_t0(i).context("failed to read segment start")?;
+            let t1 = state.full_get_segment_t1(i).context("failed to read segment end")?;
+            out.push(Segment { start_s: t0 as f64 / 100.0, end_s: t1 as f64 / 100.0, text });
         }
-
-        Ok(text.trim().to_string())
+        Ok(out)
     }
 }
