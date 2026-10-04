@@ -3,6 +3,7 @@ mod hotkey;
 mod inject;
 mod models;
 
+use auralis_runtime::personalize::PersonalizationHandle;
 use auralis_runtime::audio::AudioCapture;
 use auralis_runtime::pipeline::{Pipeline, Transcript, CORRECTION_WINDOW};
 use auralis_runtime::text::{CleanupMode, CleanupModeHandle};
@@ -28,6 +29,7 @@ struct AppState {
     startup_warning: Mutex<Option<String>>,
     last_insertion: Arc<Mutex<Option<LastInsertion>>>,
     cleanup_mode: CleanupModeHandle,
+    personalization: PersonalizationHandle,
     last_status: Mutex<String>,
 }
 
@@ -345,7 +347,7 @@ fn ensure_pipeline(app: &AppHandle) -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::anyhow!(models::missing_message(app, &model_file)))?;
 
     set_status(app, "Loading model…");
-    let pipeline = Pipeline::with_cleanup_mode(&path, state.cleanup_mode.clone())?;
+    let pipeline = Pipeline::with_options(&path, state.cleanup_mode.clone(), state.personalization.clone())?;
     *lock(&state.pipeline) = Some(pipeline);
     set_status(app, "Idle");
     Ok(())
@@ -428,7 +430,8 @@ async fn save_config(app: AppHandle, mut new_config: AppConfig) -> Result<(), St
         let path = models::find(&app, &new_config.model_file)
             .ok_or_else(|| format!("model {} isn't downloaded yet", new_config.model_file))?;
         let mode = state.cleanup_mode.clone();
-        let loaded = tauri::async_runtime::spawn_blocking(move || Pipeline::with_cleanup_mode(&path, mode))
+        let personalization = state.personalization.clone();
+        let loaded = tauri::async_runtime::spawn_blocking(move || Pipeline::with_options(&path, mode, personalization))
             .await
             .map_err(|e| e.to_string())?
             .map_err(|e| format!("failed to load model {}: {e:#}", new_config.model_file))?;
@@ -451,6 +454,7 @@ async fn save_config(app: AppHandle, mut new_config: AppConfig) -> Result<(), St
         *lock(&state.pipeline) = Some(pipeline);
     }
     state.cleanup_mode.set(cleanup_mode);
+    state.personalization.set(new_config.personalization());
     *lock(&state.config) = new_config.clone();
 
     new_config
@@ -493,6 +497,7 @@ pub fn run() {
             let config_dir = app.path().app_config_dir().unwrap_or_else(|_| PathBuf::from("."));
             let config = AppConfig::load(&config_dir);
             let cleanup_mode = CleanupModeHandle::new(config.cleanup_mode());
+            let personalization = PersonalizationHandle::new(config.personalization());
 
             app.manage(AppState {
                 config: Mutex::new(config.clone()),
@@ -505,6 +510,7 @@ pub fn run() {
                 startup_warning: Mutex::new(None),
                 last_insertion: Arc::new(Mutex::new(None)),
                 cleanup_mode,
+                personalization,
                 last_status: Mutex::new("Idle".to_string()),
             });
 

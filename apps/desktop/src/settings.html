@@ -42,13 +42,16 @@
       label { display: block; margin: 12px 0 5px; font-size: 13px; color: var(--text-2); }
       .hint { margin: 5px 0 0; font-size: 12px; color: var(--text-3); }
 
-      input, select {
+      input:not([type=checkbox]), select, textarea {
         width: 100%; padding: 9px 11px; font: inherit; color: var(--text);
         background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
         transition: border-color 0.2s, background-color 0.2s;
       }
-      input:hover, select:hover { border-color: rgba(255, 255, 255, 0.22); }
-      input:focus, select:focus { outline: none; border-color: var(--accent); }
+      input:hover, select:hover, textarea:hover { border-color: rgba(255, 255, 255, 0.22); }
+      textarea { resize: vertical; min-height: 84px; font-family: ui-monospace, 'Geist Mono', monospace; font-size: 12.5px; line-height: 1.5; }
+      label.check { display: flex; align-items: center; gap: 9px; margin-top: 16px; cursor: pointer; }
+      label.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+      input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
       select option { background: #1d1913; color: var(--text); }
       .keyrow { display: flex; gap: 8px; }
       .keyrow input { flex: 1; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
@@ -137,6 +140,20 @@
         <label for="cleanup">Cleanup</label>
         <select id="cleanup"></select>
         <div class="hint" id="cleanup-hint"></div>
+        <label class="check"><input id="spoken" type="checkbox" /> Spoken punctuation and formatting</label>
+        <div class="hint">Say “comma”, “question mark”, “new paragraph” or “open parenthesis”. In developer mode, “camel case get user” types getUser, using everything you say after it.</div>
+      </section>
+
+      <section>
+        <h2>Personal dictionary</h2>
+        <label for="dictionary">Fix words the model gets wrong</label>
+        <textarea id="dictionary" rows="4" spellcheck="false" placeholder="post gres = PostgreSQL&#10;cuber netties = Kubernetes"></textarea>
+        <div class="hint">One per line: what it hears = what to type. Whole words, any capitalization.</div>
+
+        <label for="snippets">Snippets</label>
+        <textarea id="snippets" rows="4" spellcheck="false" placeholder="my scheduling link = https://example.com/me"></textarea>
+        <div class="hint">Say the trigger on its own and Auralis types the text instead. Use 
+ for a new line.</div>
       </section>
     </main>
 
@@ -159,6 +176,9 @@
       const mic = document.getElementById("mic");
       const cleanup = document.getElementById("cleanup");
       const cleanupHint = document.getElementById("cleanup-hint");
+      const spoken = document.getElementById("spoken");
+      const dictionary = document.getElementById("dictionary");
+      const snippets = document.getElementById("snippets");
       const status = document.getElementById("status");
       const warning = document.getElementById("warning");
       const live = document.getElementById("live");
@@ -311,6 +331,9 @@
           fillSelect(mic, mics.map(plain), config.mic_device, "(system default)");
           fillSelect(cleanup, cleanupModes.map(plain), config.cleanup_mode);
           updateCleanupHint();
+          spoken.checked = config.spoken_commands !== false;
+          dictionary.value = config.dictionary || "";
+          snippets.value = config.snippets || "";
         } catch (e) {
           setStatus(`Failed to load settings: ${e}`, "error");
         }
@@ -327,6 +350,9 @@
               model_file: model.value,
               mic_device: mic.value || null,
               cleanup_mode: cleanup.value,
+              dictionary: dictionary.value,
+              snippets: snippets.value,
+              spoken_commands: spoken.checked,
             },
           });
           warning.style.display = "none";

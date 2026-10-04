@@ -2,6 +2,7 @@ pub mod audio;
 pub mod denoise;
 pub mod frontend;
 pub mod resample;
+pub mod personalize;
 pub mod pipeline;
 pub mod quality;
 pub mod stt;
