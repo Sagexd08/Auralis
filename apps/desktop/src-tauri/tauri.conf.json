@@ -36,6 +36,9 @@
       "nsis"
     ],
     "publisher": "Auralis",
+    "resources": {
+      "../../../models/bundled/*.bin": "models/"
+    },
     "shortDescription": "On-device push-to-talk dictation",
     "longDescription": "Hold a hotkey, speak, release: cleaned-up text is typed into whatever app has focus. Runs entirely on-device.",
     "icon": [

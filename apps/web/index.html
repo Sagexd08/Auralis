@@ -33,7 +33,7 @@
 {"@type":"Question","name":"What is the Auralis keyboard shortcut?","acceptedAnswer":{"@type":"Answer","text":"Hold Ctrl+Space to talk and release to insert the text. Press Ctrl+Shift+Space for hands-free continuous dictation."}},
 {"@type":"Question","name":"Which apps does Auralis work in?","acceptedAnswer":{"@type":"Answer","text":"Any Windows app with a text field. Auralis types into the focused window and falls back to the clipboard if that window blocks input."}},
 {"@type":"Question","name":"Is Auralis free?","acceptedAnswer":{"@type":"Answer","text":"Yes. Auralis is free and open source under the MIT license."}},
-{"@type":"Question","name":"How big is the speech model?","acceptedAnswer":{"@type":"Answer","text":"The base.en model is about 59 MB and small.en is about 190 MB; small.en is more accurate on proper nouns and accents. Models are local files you place in the Auralis models folder, and the app never downloads them."}}
+{"@type":"Question","name":"How big is the speech model?","acceptedAnswer":{"@type":"Answer","text":"The installer bundles OpenAI's Whisper base.en (about 59 MB) as an interim third-party default; Auralis' own models are in development. The optional small.en is about 190 MB and is more accurate on proper nouns and accents. Models are local files, and the app never downloads them."}}
 ]}]}
 </script>
 <meta name="color-scheme" content="dark" />
@@ -294,7 +294,7 @@
           <div class="link" aria-hidden="true"><span>loads</span></div>
           <p class="text-sm font-medium">Models <span class="ml-1 font-mono text-xs font-normal text-white/60">per-user app data</span></p>
           <ul class="mt-3 grid gap-2 sm:grid-cols-3">
-            <li class="chip">base.en, about 59 MB, a local file you provide</li>
+            <li class="chip">base.en, about 59 MB, bundled (OpenAI Whisper, interim)</li>
             <li class="chip">small.en, about 190 MB, optional</li>
             <li class="chip">CPU by default; CUDA or Vulkan from source</li>
           </ul>
@@ -357,7 +357,7 @@
       <div class="py-6"><dt class="text-xl font-semibold tracking-tight">What is the keyboard shortcut?</dt><dd class="mt-2 max-w-[62ch] text-sm leading-relaxed text-white/70">Hold Ctrl+Space to talk and release to insert the text. Press Ctrl+Shift+Space for hands-free continuous dictation.</dd></div>
       <div class="py-6"><dt class="text-xl font-semibold tracking-tight">Which apps does it work in?</dt><dd class="mt-2 max-w-[62ch] text-sm leading-relaxed text-white/70">Any Windows app with a text field. Auralis types into the focused window and falls back to the clipboard if that window blocks input.</dd></div>
       <div class="py-6"><dt class="text-xl font-semibold tracking-tight">Is Auralis free?</dt><dd class="mt-2 max-w-[62ch] text-sm leading-relaxed text-white/70">Yes. It is free and open source under the MIT license.</dd></div>
-      <div class="py-6"><dt class="text-xl font-semibold tracking-tight">How big is the speech model?</dt><dd class="mt-2 max-w-[62ch] text-sm leading-relaxed text-white/70">The base.en model is about 59 MB and small.en is about 190 MB; small.en is more accurate on proper nouns and accents. Models are local files you place in the Auralis models folder, and the app never downloads them.</dd></div>
+      <div class="py-6"><dt class="text-xl font-semibold tracking-tight">How big is the speech model?</dt><dd class="mt-2 max-w-[62ch] text-sm leading-relaxed text-white/70">The installer bundles OpenAI's Whisper base.en (about 59 MB) as an interim third-party default; Auralis' own models are in development. The optional small.en is about 190 MB and is more accurate on proper nouns and accents. Models are local files, and the app never downloads them.</dd></div>
     </dl>
   </div>
 </section>
@@ -369,7 +369,7 @@
     <div class="rv grid gap-12 lg:grid-cols-12">
       <div class="lg:col-span-7">
         <h2 class="text-5xl font-semibold leading-[1.02] tracking-tighter sm:text-6xl lg:text-7xl">Get Auralis for Windows.</h2>
-        <p class="mt-6 max-w-[50ch] text-base leading-relaxed text-black/70">Free and open source. A small installer. Speech models are local files that you place in the Auralis models folder.</p>
+        <p class="mt-6 max-w-[50ch] text-base leading-relaxed text-black/70">Free and open source. The installer bundles OpenAI's Whisper base.en as an interim default, so it works offline from the first launch. Auralis' own models are in development.</p>
         <div class="mt-10 flex flex-wrap items-center gap-4">
           <a id="dl-btn" href="https://github.com/Sagexd08/Auralis/releases" class="inline-flex items-center gap-2.5 rounded-full bg-[#16110a] px-8 py-4 text-base font-semibold text-white transition-all hover:bg-black active:scale-[0.98]">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>
@@ -382,7 +382,7 @@
 
       <ol class="lg:col-span-5 divide-y divide-black/20 border-y border-black/20">
         <li class="grid grid-cols-[2rem_1fr] gap-3 py-5"><span class="font-mono text-sm text-black/70">1</span><div><p class="font-medium">Run the installer</p><p class="mt-1 text-sm leading-relaxed text-black/75">It installs for the current user and does not need administrator rights.</p></div></li>
-        <li class="grid grid-cols-[2rem_1fr] gap-3 py-5"><span class="font-mono text-sm text-black/70">2</span><div><p class="font-medium">Add a speech model</p><p class="mt-1 text-sm leading-relaxed text-black/75">Copy a model file such as ggml-base.en-q5_1.bin into the models folder in Auralis app data.</p></div></li>
+        <li class="grid grid-cols-[2rem_1fr] gap-3 py-5"><span class="font-mono text-sm text-black/70">2</span><div><p class="font-medium">Nothing else to set up</p><p class="mt-1 text-sm leading-relaxed text-black/75">The interim Whisper model is included; you can add other ggml models later.</p></div></li>
         <li class="grid grid-cols-[2rem_1fr] gap-3 py-5"><span class="font-mono text-sm text-black/70">3</span><div><p class="font-medium">Click into any text field</p><p class="mt-1 text-sm leading-relaxed text-black/75">Hold <span class="font-mono text-black">Ctrl+Space</span>, speak, release.</p></div></li>
       </ol>
     </div>

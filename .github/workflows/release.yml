@@ -41,6 +41,17 @@ jobs:
           $native = python -c "import clang, os; print(os.path.join(os.path.dirname(clang.__file__), 'native'))"
           "LIBCLANG_PATH=$native" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
+      - name: Fetch the third-party Whisper base.en model (installer only)
+        shell: pwsh
+        run: |
+          # Whisper (MIT, OpenAI) is fetched from its upstream at build time and checksum-pinned.
+          # It is bundled into the installer only and is never published as an Auralis model.
+          New-Item -ItemType Directory -Force models/bundled | Out-Null
+          $dest = "models/bundled/ggml-base.en-q5_1.bin"
+          Invoke-WebRequest -Uri "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en-q5_1.bin" -OutFile $dest
+          $hash = (Get-FileHash $dest -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne "4baf70dd0d7c4247ba2b81fafd9c01005ac77c2f9ef064e00dcf195d0e2fdd2f") { throw "unexpected model checksum: $hash" }
+
       - name: npm ci
         working-directory: apps/desktop
         run: npm ci

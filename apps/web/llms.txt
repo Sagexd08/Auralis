@@ -9,7 +9,7 @@
 ## Facts
 - Shortcuts: Ctrl+Space (hold to talk), Ctrl+Shift+Space (hands-free toggle)
 - Pipeline: mic capture (cpal) -> VAD (webrtc-vad) -> denoise (RNNoise) -> STT (whisper.cpp) -> local text cleanup -> keystroke insertion (enigo)
-- Default model: base.en (about 59 MB), supplied as a local file; small.en (about 190 MB) optional
+- Default model: base.en (about 59 MB), bundled in the installer (third-party Whisper, interim); small.en (about 190 MB) optional
 - Cleanup modes: raw, clean, polished, developer
 - Local HTTP API: POST /v1/transcriptions on 127.0.0.1:8787
 - Source and releases: https://github.com/Sagexd08/Auralis

@@ -31,6 +31,11 @@ pub fn models_dir(app: &AppHandle) -> PathBuf {
         .join("models")
 }
 
+/// Models shipped inside the installer (read-only, next to the executable).
+fn bundled_models_dir(app: &AppHandle) -> Option<PathBuf> {
+    app.path().resource_dir().ok().map(|d| d.join("models"))
+}
+
 fn dev_models_dir() -> Option<PathBuf> {
     if cfg!(debug_assertions) {
         Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../models"))
@@ -48,6 +53,7 @@ pub fn find(app: &AppHandle, file: &str) -> Option<PathBuf> {
         return None;
     }
     std::iter::once(models_dir(app))
+        .chain(bundled_models_dir(app))
         .chain(dev_models_dir())
         .map(|dir| dir.join(file))
         .find(|p| p.is_file())
@@ -55,6 +61,7 @@ pub fn find(app: &AppHandle, file: &str) -> Option<PathBuf> {
 
 fn installed_files(app: &AppHandle) -> Vec<String> {
     let mut names: Vec<String> = std::iter::once(models_dir(app))
+        .chain(bundled_models_dir(app))
         .chain(dev_models_dir())
         .filter_map(|dir| fs::read_dir(dir).ok())
         .flat_map(|entries| entries.flatten())
