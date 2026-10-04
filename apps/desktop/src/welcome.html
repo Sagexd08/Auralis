@@ -88,6 +88,35 @@
       button.primary:hover:not(:disabled) { background: #efbd75; }
       button.link { background: none; border: 0; padding: 10px 4px; color: var(--text-3); }
       button.link:hover:not(:disabled) { background: none; color: var(--text); }
+
+      .step.on.back { animation-name: enter-back; }
+      @keyframes enter-back { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+      kbd { transition: background-color 0.12s, color 0.12s, transform 0.12s, box-shadow 0.12s; }
+      kbd.down { background: var(--accent); color: var(--accent-ink); transform: translateY(2px); box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 rgba(0, 0, 0, 0); }
+      .demo-keys kbd { animation: tap 2.4s var(--ease) infinite; }
+      .demo-keys kbd + .plus + kbd { animation-delay: 0.15s; }
+      @keyframes tap { 0%, 55%, 100% { background: rgba(255, 255, 255, 0.08); color: var(--text); transform: none; } 15%, 40% { background: var(--accent); color: var(--accent-ink); transform: translateY(2px); } }
+
+      #meter { display: flex; align-items: flex-end; gap: 3px; height: 54px; margin-top: 16px; }
+      #meter i { flex: 1; min-width: 0; height: 6px; border-radius: 3px; background: var(--raised); transition: height 0.08s linear, background-color 0.15s; }
+      #meter i.lit { background: var(--accent); }
+      #meter i.hot { background: #ff8a6b; }
+      #mic-line { display: flex; align-items: center; gap: 10px; }
+      #mic-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-3); flex: none; }
+      #mic-dot.ok { background: var(--ok); } #mic-dot.err { background: var(--err); }
+      #mic-text { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      #success { display: none; margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(143, 209, 143, 0.09); box-shadow: inset 0 0 0 1px rgba(143, 209, 143, 0.35); color: var(--text); animation: enter 0.5s var(--ease) both; }
+      #success b { color: var(--ok); font-weight: 600; }
+      #success span { display: block; margin-top: 2px; color: var(--text-2); font-size: 13px; }
+      #practice-wrap { position: relative; }
+      #practice-wrap.live textarea { border-color: var(--accent); }
+      #wave { position: absolute; right: 12px; bottom: 12px; display: none; align-items: center; gap: 2px; height: 18px; }
+      #practice-wrap.live #wave { display: flex; }
+      #wave i { display: block; width: 3px; height: 4px; border-radius: 2px; background: var(--accent); animation: wv 0.8s ease-in-out infinite; }
+      #wave i:nth-child(2) { animation-delay: -0.2s; } #wave i:nth-child(3) { animation-delay: -0.5s; } #wave i:nth-child(4) { animation-delay: -0.1s; } #wave i:nth-child(5) { animation-delay: -0.35s; }
+      @keyframes wv { 0%, 100% { height: 4px; } 50% { height: 17px; } }
+      #skip { margin-left: auto; margin-right: 8px; }
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
     </style>
   </head>
@@ -97,7 +126,7 @@
         <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M 128 128 C 128 198.692 70.692 256 0 256 C 0 185.308 57.308 128 128 128 Z M 128 128 C 198.692 128 256 185.308 256 256 C 185.308 256 128 198.692 128 128 Z M 0 0 C 70.692 0 128 57.308 128 128 C 57.308 128 0 70.692 0 0 Z M 256 0 C 256 70.692 198.692 128 128 128 C 128 57.308 185.308 0 256 0 Z" /></svg>
         auralis
       </div>
-      <div id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
     </header>
 
     <main>
@@ -116,7 +145,7 @@
         <p class="lead">Two shortcuts work in any app.</p>
         <div class="card">
           <div class="hk">
-            <div class="row"><b>Push to talk</b><span class="keys" id="k-ptt"></span></div>
+            <div class="row"><b>Push to talk</b><span class="keys demo-keys" id="k-ptt"></span></div>
             <span>Hold while you speak, let go and the text appears.</span>
           </div>
           <div class="hk">
@@ -127,13 +156,25 @@
         <p class="small" style="margin-top: 14px">Another app using one of these? <button class="link" id="open-settings" type="button" style="padding: 0; text-decoration: underline">Change shortcuts</button></p>
       </section>
 
+      <section class="step" data-step="mic" aria-labelledby="hm">
+        <h1 id="hm">Check your microphone.</h1>
+        <p class="lead">Say a few words. The bars should move.</p>
+        <div class="card">
+          <div id="mic-line"><span id="mic-dot"></span><span id="mic-text">Opening the microphone…</span></div>
+          <div id="meter" aria-hidden="true"></div>
+          <p class="small" id="mic-help" style="margin: 14px 0 0">Auralis uses your default input device. You can pick another one in Settings.</p>
+        </div>
+        <p class="small" style="margin-top: 14px">This check stays on your PC and nothing is recorded.</p>
+      </section>
+
       <section class="step" data-step="2" aria-labelledby="h2">
         <h1 id="h2">Try it here.</h1>
         <p class="lead">Click the box, hold <span id="try-keys"></span>, say a sentence, then let go.</p>
         <div style="margin-top: 22px">
           <label for="practice" class="small" style="display: block; margin-bottom: 6px">Practice box</label>
-          <textarea id="practice" placeholder="Your words will appear here."></textarea>
+          <div id="practice-wrap"><textarea id="practice" placeholder="Your words will appear here."></textarea><span id="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span></div>
           <div id="pill" role="status" aria-live="polite"><i></i><span>Ready</span></div>
+          <div id="success" role="status"><b>That was Auralis.</b><span>Now try a correction: say “actually, change” and the word you want swapped, then the new one.</span></div>
         </div>
         <p class="small" style="margin: 14px 0 0">Nothing typed? Check that Windows allows microphone access for desktop apps (Settings, Privacy, Microphone), then try again.</p>
       </section>
@@ -161,6 +202,7 @@
 
     <footer>
       <button id="back" class="link" type="button">Back</button>
+      <button id="skip" class="link" type="button">Skip guide</button>
       <button id="next" class="primary" type="button">Continue</button>
     </footer>
 
@@ -197,17 +239,22 @@
       }
 
       function show(index) {
+        const previous = current;
         current = Math.max(0, Math.min(steps.length - 1, index));
-        steps.forEach((s, i) => s.classList.toggle("on", i === current));
+        steps.forEach((s, i) => {
+          s.classList.toggle("on", i === current);
+          s.classList.toggle("back", current < previous);
+        });
         dots.forEach((d, i) => {
           d.className = i < current ? "done" : i === current ? "now" : "";
         });
         back.style.visibility = current === 0 ? "hidden" : "visible";
-        next.textContent = current === steps.length - 1 ? "Start using Auralis" : current === 2 ? "Done trying" : "Continue";
+        next.textContent = current === steps.length - 1 ? "Start using Auralis" : current === 3 ? "Done trying" : "Continue";
         updateNext();
         const heading = steps[current].querySelector("h1");
         if (heading) heading.setAttribute("tabindex", "-1"), heading.focus({ preventScroll: true });
-        if (current === 2) setTimeout(() => document.getElementById("practice").focus(), 250);
+        if (current === 3) setTimeout(() => document.getElementById("practice").focus(), 250);
+        if (current === 2) startMic(); else stopMic();
       }
 
       function updateNext() {
@@ -276,6 +323,116 @@
         getCurrentWindow().close();
       });
       document.getElementById("open-settings").addEventListener("click", () => invoke("open_settings"));
+
+
+      // ---- microphone level meter (runs in this window only, never recorded) ----
+      const meter = document.getElementById("meter");
+      const micDot = document.getElementById("mic-dot");
+      const micText = document.getElementById("mic-text");
+      const micHelp = document.getElementById("mic-help");
+      const BARS = 28;
+      for (let i = 0; i < BARS; i++) meter.appendChild(document.createElement("i"));
+      const bars = Array.from(meter.children);
+      let micStream = null, micCtx = null, micRaf = 0, heardVoice = false;
+
+      function paintMeter(level) {
+        const lit = Math.round(Math.min(1, level) * BARS);
+        bars.forEach((b, i) => {
+          const on = i < lit;
+          b.className = on ? (i > BARS * 0.82 ? "hot" : "lit") : "";
+          b.style.height = on ? 8 + (i / BARS) * 46 + "px" : "6px";
+        });
+      }
+
+      async function startMic() {
+        stopMic();
+        heardVoice = false;
+        micDot.className = "";
+        micText.textContent = "Opening the microphone…";
+        paintMeter(0);
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false } });
+          if (current !== 2) return stopMic();
+          const label = micStream.getAudioTracks()[0]?.label || "default microphone";
+          micDot.className = "ok";
+          micText.textContent = `Listening on ${label}`;
+          micCtx = new AudioContext();
+          const analyser = micCtx.createAnalyser();
+          analyser.fftSize = 1024;
+          micCtx.createMediaStreamSource(micStream).connect(analyser);
+          const data = new Uint8Array(analyser.fftSize);
+          const loop = () => {
+            analyser.getByteTimeDomainData(data);
+            let peak = 0;
+            for (const v of data) peak = Math.max(peak, Math.abs(v - 128) / 128);
+            const level = Math.min(1, peak * 2.4);
+            paintMeter(level);
+            if (level > 0.25 && !heardVoice) {
+              heardVoice = true;
+              micText.textContent = "Great, we can hear you.";
+              micHelp.textContent = "If the bars hit the red end a lot, move back a little or lower the input volume.";
+            }
+            micRaf = requestAnimationFrame(loop);
+          };
+          loop();
+        } catch (e) {
+          micDot.className = "err";
+          micText.textContent = "Couldn’t open the microphone from this window.";
+          micHelp.textContent =
+            "Check Windows Settings, Privacy, Microphone, and allow desktop apps. Dictation may still work. You can test it in the next step.";
+        }
+      }
+
+      function stopMic() {
+        cancelAnimationFrame(micRaf);
+        if (micStream) micStream.getTracks().forEach((t) => t.stop());
+        if (micCtx) micCtx.close().catch(() => {});
+        micStream = micCtx = null;
+        paintMeter(0);
+      }
+
+      // ---- live key caps: highlight whatever the user is actually pressing ----
+      const KEYMAP = { Control: "ctrl", Shift: "shift", Alt: "alt", Meta: "super", " ": "space" };
+      const pressed = new Set();
+      function syncKeys() {
+        document.querySelectorAll("kbd").forEach((k) => {
+          const name = k.textContent.trim().toLowerCase();
+          k.classList.toggle("down", pressed.has(name));
+        });
+        document.querySelectorAll(".demo-keys").forEach((el) => el.classList.toggle("paused", pressed.size > 0));
+        document.querySelectorAll(".demo-keys kbd").forEach((k) => {
+          k.style.animationPlayState = pressed.size > 0 ? "paused" : "running";
+        });
+      }
+      window.addEventListener("keydown", (e) => {
+        pressed.add(KEYMAP[e.key] || e.key.toLowerCase());
+        syncKeys();
+        if (e.key === "Enter" && e.target.tagName !== "TEXTAREA" && e.target.tagName !== "BUTTON" && !next.disabled) next.click();
+      });
+      window.addEventListener("keyup", (e) => { pressed.delete(KEYMAP[e.key] || e.key.toLowerCase()); syncKeys(); });
+      window.addEventListener("blur", () => { pressed.clear(); syncKeys(); });
+
+      // ---- practice box: celebrate the first real dictation ----
+      const practice = document.getElementById("practice");
+      const practiceWrap = document.getElementById("practice-wrap");
+      const success = document.getElementById("success");
+      let sawListening = false, celebrated = false;
+      listen("auralis://status", (event) => {
+        if (event.payload.startsWith("Listening")) sawListening = true;
+        practiceWrap.classList.toggle("live", event.payload.startsWith("Listening") && current === 3);
+      });
+      practice.addEventListener("input", () => {
+        if (!sawListening || celebrated || !practice.value.trim()) return;
+        celebrated = true;
+        success.style.display = "block";
+      });
+
+      document.getElementById("skip").addEventListener("click", async () => {
+        stopMic();
+        try { await invoke("complete_onboarding"); } catch (_) {}
+        getCurrentWindow().close();
+      });
+      window.addEventListener("pagehide", stopMic);
 
       (async function init() {
         try {
