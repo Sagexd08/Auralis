@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use auralis_runtime::{denoise, quality, resample, stt::SttEngine, vad};
+use auralis_runtime::{denoise, quality, resample, stt::{join_segments, load_engine}, vad};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
@@ -73,8 +73,8 @@ fn main() -> Result<()> {
         }
     };
 
-    let engine = SttEngine::load(&args.model)?;
-    let transcript = engine.transcribe(&samples_16k)?;
+    let engine = load_engine(&args.model)?;
+    let transcript = join_segments(&engine.segments(&samples_16k, None)?);
 
     println!("{transcript}");
     Ok(())

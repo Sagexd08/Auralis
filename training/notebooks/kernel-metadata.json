@@ -1,0 +1,13 @@
+{
+  "id": "sagexd08/auralis-train-ls460",
+  "title": "Auralis Train LS460",
+  "code_file": "auralis_kaggle_train.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_internet": "true",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": []
+}

@@ -37,6 +37,8 @@ class TrainConfig:
     num_workers: int = 0
     amp: bool = True
     grad_clip: float = 5.0
+    spec_augment: bool = False
+    time_budget: float = 0.0
     model: dict = field(default_factory=dict)
 
     @staticmethod
@@ -51,10 +53,28 @@ def seed_everything(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
 
 
-def lr_at(step: int, cfg: TrainConfig) -> float:
+def spec_augment(feats: torch.Tensor, frames: torch.Tensor, freq_width: int = 27, freq_masks: int = 2, time_width: int = 40, time_masks: int = 2) -> torch.Tensor:
+    out = feats.clone()
+    n_mels = out.shape[1]
+    for b in range(out.shape[0]):
+        length = int(frames[b])
+        for _ in range(freq_masks):
+            w = random.randint(0, min(freq_width, n_mels))
+            f0 = random.randint(0, n_mels - w)
+            out[b, f0:f0 + w, :] = 0
+        for _ in range(time_masks):
+            w = random.randint(0, min(time_width, max(1, length // 5)))
+            t0 = random.randint(0, max(0, length - w))
+            out[b, :, t0:t0 + w] = 0
+    return out
+
+
+def lr_at(step: int, cfg: TrainConfig, elapsed: float = 0.0) -> float:
     if step < cfg.warmup_steps:
         return cfg.lr * (step + 1) / cfg.warmup_steps
     progress = (step - cfg.warmup_steps) / max(1, cfg.max_steps - cfg.warmup_steps)
+    if cfg.time_budget > 0:
+        progress = max(progress, elapsed / cfg.time_budget)
     return cfg.lr * (0.05 + 0.95 * 0.5 * (1 + math.cos(math.pi * min(progress, 1.0))))
 
 
@@ -99,7 +119,8 @@ def train(cfg: TrainConfig, resume: bool = False):
     val_loader = DataLoader(val_ds, cfg.batch_size, shuffle=False, collate_fn=collate, num_workers=cfg.num_workers)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, betas=(0.9, 0.98), weight_decay=1e-2)
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda s: lr_at(s, cfg) / cfg.lr)
+    t0 = time.time()
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda s: lr_at(s, cfg, time.time() - t0) / cfg.lr)
     step = 0
     if ckpt is not None:
         state = torch.load(ckpt / "trainer_state.pt", map_location=device)
@@ -111,16 +132,18 @@ def train(cfg: TrainConfig, resume: bool = False):
     hardware = {"device": device.type, "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else platform.processor(), "torch": torch.__version__}
     log = (out_dir / "train_log.jsonl").open("a", encoding="utf-8")
     history = []
-    t0 = time.time()
     micro = 0
+    final = False
     model.train()
-    while step < cfg.max_steps:
+    while step < cfg.max_steps and not final:
         for waves, wave_lengths, targets, target_lengths, _ in train_loader:
             waves, wave_lengths = waves.to(device), wave_lengths.to(device)
             with torch.no_grad():
                 feats = logmel(waves)
                 frames = torch.tensor([logmel.num_frames(int(n)) for n in wave_lengths.tolist()], device=device)
                 feats = normalize_features(feats, frames)
+                if cfg.spec_augment:
+                    feats = spec_augment(feats, frames)
             with torch.autocast(device.type, dtype=torch.float16, enabled=use_amp):
                 log_probs, out_lengths = model(feats, frames)
             loss = ctc_loss(log_probs.float(), targets.to(device), out_lengths, target_lengths.to(device), tokenizer.blank_id) / cfg.grad_accum
@@ -135,10 +158,11 @@ def train(cfg: TrainConfig, resume: bool = False):
             optimizer.zero_grad(set_to_none=True)
             scheduler.step()
             step += 1
+            final = step >= cfg.max_steps or (cfg.time_budget > 0 and time.time() - t0 >= cfg.time_budget)
             row = {"step": step, "loss": loss.item() * cfg.grad_accum, "lr": scheduler.get_last_lr()[0], "seconds": round(time.time() - t0, 1)}
             if device.type == "cuda":
                 row["peak_vram_mb"] = round(torch.cuda.max_memory_allocated() / 2**20, 1)
-            if step % cfg.eval_every == 0 or step == cfg.max_steps:
+            if step % cfg.eval_every == 0 or final:
                 metrics, _, _ = evaluate(model, tokenizer, val_loader, logmel, device)
                 row.update({f"val_{k}": v for k, v in metrics.items()})
             log.write(json.dumps(row) + "\n")
@@ -147,7 +171,7 @@ def train(cfg: TrainConfig, resume: bool = False):
             if "val_wer" in row:
                 save_checkpoint(out_dir, step, model, tokenizer, optimizer, scheduler, {"history_tail": history[-5:], **row},
                                 {"corpus": meta, "train_samples": len(train_ds), "val_samples": len(val_ds)}, cfg.seed, hardware, asdict(cfg))
-            if step >= cfg.max_steps:
+            if final:
                 break
     log.close()
     return model, tokenizer, history
