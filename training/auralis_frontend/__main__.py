@@ -1,4 +1,3 @@
-"""python -m auralis_frontend speech.wav out.npy [--plot out.png]"""
 import sys
 import numpy as np
 from . import read_wav, resample, log_mel

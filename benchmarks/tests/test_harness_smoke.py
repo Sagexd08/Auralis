@@ -1,12 +1,3 @@
-"""Smoke test for the benchmark harness: no full dataset download required.
-
-Exercises the real pipeline — bench_cli subprocess, WER/CER computation,
-report generation — against the small bundled fixture (1 clip) plus a
-synthetically noised copy of it, so this validates harness mechanics, not
-model accuracy. Skips (rather than fails) if the whisper model or the
-bench_cli binary isn't built, since those are produced by earlier Phase 1
-steps, not by this test.
-"""
 import json
 import sys
 import tempfile

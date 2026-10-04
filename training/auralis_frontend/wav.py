@@ -1,9 +1,7 @@
 import wave
 import numpy as np
 
-
 def read_wav(path):
-    """Read a PCM WAV file. Returns (samples float64 in [-1, 1], sample_rate). Stereo is averaged to mono."""
     with wave.open(str(path), "rb") as w:
         n_ch, width, sr, n = w.getnchannels(), w.getsampwidth(), w.getframerate(), w.getnframes()
         raw = w.readframes(n)

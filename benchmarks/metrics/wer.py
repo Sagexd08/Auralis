@@ -1,13 +1,9 @@
-"""WER/CER and RTF computation for a single benchmark run's results."""
 import re
 from dataclasses import dataclass
 
 import jiwer
 
 def normalize(text: str) -> str:
-    """Lowercase, strip punctuation, collapse whitespace — matches the
-    loose normalization LibriSpeech references already use, so hypotheses
-    (which include whisper.cpp's punctuation/casing) compare fairly."""
     text = text.lower()
     text = re.sub(r"[^\w\s]", "", text)
     text = re.sub(r"\s+", " ", text).strip()

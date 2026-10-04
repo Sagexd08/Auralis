@@ -1,4 +1,3 @@
-"""Auralis Data Factory (M1): provenance records, licence gate, reproducible corpus builds."""
 from .provenance import DatasetRecord, LicenseState, SampleRecord
 from .gate import GateDecision, check_dataset, training_eligible
 from .registry import Registry

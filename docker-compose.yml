@@ -1,10 +1,3 @@
-# Two transcription nodes behind one router, with optional Prometheus and Grafana.
-#
-#   docker compose up --build                       nodes + router
-#   docker compose --profile observability up       also Prometheus and Grafana
-#
-# Put a model in ./models first (models/pull-model.ps1, or see docs/INFRA.md).
-# Only the router, Prometheus and Grafana are published, and only on localhost.
 
 x-node: &node
   build:
@@ -54,7 +47,6 @@ services:
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
-      # Taken from your shell; export it before `docker compose up` (see docs/INFRA.md).
       - GF_SECURITY_ADMIN_PASSWORD
     volumes:
       - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro

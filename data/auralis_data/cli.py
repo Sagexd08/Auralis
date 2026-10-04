@@ -1,4 +1,3 @@
-"""python -m auralis_data register|check|build"""
 import argparse
 import json
 import sys
@@ -6,7 +5,6 @@ from .corpus import CorpusConfig, LicenceGateError, build_corpus
 from .gate import check_dataset
 from .provenance import DatasetRecord, LicenseState
 from .registry import Registry
-
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="auralis-data")
@@ -51,7 +49,6 @@ def main(argv=None):
         return 2
     print(f"{meta['name']}: {meta['samples']} samples, {meta['hours']} h, sha256 {meta['sha256'][:16]}")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

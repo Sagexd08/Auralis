@@ -1,13 +1,3 @@
-"""Synthetically mixes a clean dataset's clips with procedurally generated
-white noise at a controlled SNR, producing a "noisy" sibling dataset with
-the same manifest (same references, same clip ids) so the runner can run
-the identical variant matrix against both.
-
-No external noise corpus is bundled/downloaded — noise is generated with
-numpy, which keeps this script runnable offline with no registration-gated
-downloads, per the Phase 1 design doc's "no registration-gated corpora"
-constraint.
-"""
 import argparse
 import json
 import wave
@@ -33,7 +23,6 @@ def write_wav(path: Path, samples: np.ndarray, sample_rate: int) -> None:
         wf.writeframes(pcm.tobytes())
 
 def mix_at_snr(signal: np.ndarray, noise: np.ndarray, snr_db: float) -> np.ndarray:
-    """Scales `noise` so the mix hits the target SNR (in dB), then mixes it in."""
     signal_power = np.mean(signal**2) + 1e-12
     noise_power = np.mean(noise**2) + 1e-12
     target_noise_power = signal_power / (10.0 ** (snr_db / 10.0))
