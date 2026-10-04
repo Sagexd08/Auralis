@@ -25,6 +25,7 @@ class DatasetRecord:
     downloaded_at: str = ""
     checksum: str = ""
     notes: str = ""
+    root: str = ""
 
     def to_json(self) -> dict:
         d = asdict(self)
