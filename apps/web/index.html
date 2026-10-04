@@ -118,6 +118,7 @@
 <script>document.documentElement.classList.add("js")</script>
 </head>
 <body>
+<a href="#product" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-full focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-[#010101]">Skip to content</a>
 <div id="prog" aria-hidden="true" class="fixed left-0 top-0 z-[60] h-0.5 w-full scale-x-0 bg-[#e3ad5f]"></div>
 <section class="relative h-screen w-full overflow-hidden">
   <video
@@ -200,10 +201,10 @@
 
 <div class="text-white" style="background: linear-gradient(to bottom, #1d1a10 0, #0d0b09 26rem)">
 
-<section id="product" class="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-12 lg:py-36">
+<section id="product" aria-labelledby="product-title" class="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-12 lg:py-36">
   <div class="grid items-center gap-14 lg:grid-cols-12 lg:gap-16">
     <div class="rv lg:col-span-5">
-      <h2 class="text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl lg:text-6xl">Hold. Speak. Release.</h2>
+      <h2 id="product-title" class="text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl lg:text-6xl">Hold. Speak. Release.</h2>
       <p class="mt-6 max-w-[48ch] text-base leading-relaxed text-white/70">Auralis types into whatever window has focus: an editor, a terminal, a chat box, a form. Transcription runs on your own machine, so what you say never becomes someone else’s data.</p>
       <div class="mt-9 flex flex-wrap gap-3">
         <a href="#download" class="cta rounded-full px-6 py-3 text-sm font-medium text-white transition-all hover:opacity-90 active:scale-[0.98]">Get Auralis</a>
@@ -229,6 +230,19 @@
         </div>
       </div>
       <p class="mt-3 text-xs text-white/50">An illustration of the real behavior, not a recording.</p>
+    </div>
+  </div>
+
+  <div class="rv mt-24 grid items-center gap-10 border-t border-white/10 pt-16 lg:grid-cols-12 lg:gap-16">
+    <div class="lg:col-span-5">
+      <h3 class="text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl">One key is the whole interface.</h3>
+      <p class="mt-5 max-w-[44ch] text-base leading-relaxed text-white/70">Hold <span class="font-mono text-white/90">Ctrl+Space</span> and talk. Let go and the text is in the window you were already using. Nothing to open, nothing to switch to.</p>
+      <p class="mt-6 font-mono text-xs uppercase tracking-[0.14em] text-white/55">Touch or move over the keys to press them</p>
+    </div>
+    <div class="lg:col-span-7">
+      <div class="overflow-hidden rounded-2xl bg-[#0a0a0b] ring-1 ring-white/15 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]">
+        <iframe src="figures/keys.html?theme=dark" title="Interactive illustration of a keyboard: the keys sink under your pointer, with the space bar highlighted" loading="lazy" class="block h-[26rem] w-full border-0 sm:h-[30rem]"></iframe>
+      </div>
     </div>
   </div>
 
