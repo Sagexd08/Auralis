@@ -35,7 +35,7 @@
   a:hover { color: var(--accent); text-decoration-color: var(--accent); }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
   code, kbd, pre { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  code { font-size: .88em; background: var(--panel); padding: .12em .4em; border-radius: .4em; color: #fff; }
+  code { font-size: .88em; background: var(--panel); padding: .2em .5em; border-radius: .4em; color: #fff; }
   #prog { position: fixed; inset: 0 0 auto 0; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: 0 50%; z-index: 60; }
 
   header.top { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .9rem clamp(1.25rem, 4vw, 3rem); background: rgba(13,11,9,.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid transparent; transition: border-color .3s; }
@@ -49,7 +49,7 @@
   .btn.solid:hover { background: #efbd75; color: #16110a; }
 
   .intro { max-width: 72rem; margin: 0 auto; padding: clamp(2.5rem, 7vw, 5rem) clamp(1.25rem, 4vw, 3rem) 1rem; }
-  .intro h1 { font-size: clamp(2rem, 5.2vw, 3.5rem); line-height: 1.12; letter-spacing: -.03em; font-weight: 600; margin: 0; max-width: 18ch; text-wrap: balance; }
+  .intro h1 { font-size: clamp(2rem, 5.2vw, 3.5rem); line-height: 1.18; letter-spacing: -.03em; font-weight: 600; margin: 0; max-width: 18ch; text-wrap: balance; }
   .lead { font-size: clamp(1.0625rem, 1.6vw, 1.25rem); line-height: 1.6; color: var(--fg-2); max-width: 54ch; margin: 1.5rem 0 0; }
   .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.75rem; }
   .chips span { font-family: 'Geist Mono', monospace; font-size: .75rem; padding: .45rem .9rem; border-radius: 999px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--rule); color: var(--fg-2); }
@@ -63,7 +63,7 @@
   .layout { display: grid; gap: 2rem; max-width: 72rem; margin: 0 auto; padding: 2rem clamp(1.25rem, 4vw, 3rem) 6rem; }
   @media (min-width: 960px) { .layout { grid-template-columns: 15rem minmax(0, 1fr); gap: 4.5rem; } }
 
-  nav.toc { font-size: .875rem; line-height: 1.35; }
+  nav.toc { font-size: .875rem; line-height: 1.5; }
   nav.toc p { margin: 0 0 .75rem; color: var(--fg-3); }
   nav.toc ol { list-style: none; margin: 0; padding: 0; }
   nav.toc a { display: block; padding: .5rem 0 .5rem .9rem; margin-left: -1px; border-left: 2px solid transparent; color: var(--fg-3); text-decoration: none; transition: color .2s, border-color .2s, padding-left .3s var(--ease); }
