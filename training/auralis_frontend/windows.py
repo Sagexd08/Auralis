@@ -1,8 +1,6 @@
 import numpy as np
 
-
 def get_window(name, n, periodic=True):
-    """Rectangular, Hann, Hamming or Blackman. `periodic=True` (spectral analysis) divides by n, not n-1."""
     d = n if periodic else n - 1
     k = np.arange(n)
     if name in ("rect", "rectangular", "boxcar"):

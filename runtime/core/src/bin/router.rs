@@ -12,7 +12,6 @@ const MAX_BODY_BYTES: u64 = 50 * 1024 * 1024;
 
 #[derive(Parser, Debug)]
 struct Args {
-    /// Base URL of an auralis-server node, e.g. http://10.0.0.5:8787. Repeat for each node.
     #[arg(long = "node", required = true)]
     nodes: Vec<String>,
 
@@ -22,7 +21,6 @@ struct Args {
     #[arg(long, default_value_t = 8780)]
     port: u16,
 
-    /// Seconds between health checks.
     #[arg(long, default_value_t = 5)]
     health_interval: u64,
 }
@@ -52,8 +50,6 @@ impl Node {
     }
 }
 
-/// Least in-flight healthy node; ties go to the one that has served the fewest requests.
-/// `skip` holds indices already tried for this request.
 fn pick_node(nodes: &[Node], skip: &[usize]) -> Option<usize> {
     nodes
         .iter()

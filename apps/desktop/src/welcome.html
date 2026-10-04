@@ -314,8 +314,6 @@
       });
       document.getElementById("open-settings").addEventListener("click", () => invoke("open_settings"));
 
-
-      // ---- microphone level meter (runs in this window only, never recorded) ----
       const meter = document.getElementById("meter");
       const micDot = document.getElementById("mic-dot");
       const micText = document.getElementById("mic-text");
@@ -381,7 +379,6 @@
         paintMeter(0);
       }
 
-      // ---- live key caps: highlight whatever the user is actually pressing ----
       const KEYMAP = { Control: "ctrl", Shift: "shift", Alt: "alt", Meta: "super", " ": "space" };
       const pressed = new Set();
       function syncKeys() {
@@ -402,7 +399,6 @@
       window.addEventListener("keyup", (e) => { pressed.delete(KEYMAP[e.key] || e.key.toLowerCase()); syncKeys(); });
       window.addEventListener("blur", () => { pressed.clear(); syncKeys(); });
 
-      // ---- practice box: celebrate the first real dictation ----
       const practice = document.getElementById("practice");
       const practiceWrap = document.getElementById("practice-wrap");
       const success = document.getElementById("success");

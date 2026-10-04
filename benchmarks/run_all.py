@@ -1,17 +1,3 @@
-"""Single reproducible entrypoint for the Auralis benchmark harness.
-
-Runs every (model size) x (raw | vad-denoise) x (clean | noisy) combination,
-computes WER/CER/RTF for each, and writes a report. No SOTA claims — only
-measured numbers plus the exact commands used (PRD §27).
-
-Usage:
-    python benchmarks/run_all.py [--dataset-dir DIR] [--snr-db 5.0]
-
-By default this runs against the small bundled fixture set in
-`benchmarks/datasets/fixtures/` (one clip) rather than downloading the full
-LibriSpeech subset — run `datasets/prepare_librispeech.py` first and pass
-`--dataset-dir` to benchmark against real data.
-"""
 import argparse
 import json
 import subprocess

@@ -4,15 +4,12 @@ from .provenance import DatasetRecord, LicenseState
 _TRAIN = {LicenseState.TRAINING_ONLY, LicenseState.REDISTRIBUTABLE, LicenseState.ELIGIBLE}
 _COMMERCIAL = {LicenseState.ELIGIBLE, LicenseState.REDISTRIBUTABLE}
 
-
 @dataclass(frozen=True)
 class GateDecision:
     allowed: bool
     reason: str
 
-
 def check_dataset(rec: DatasetRecord, commercial: bool = False) -> GateDecision:
-    """Licence gate. UNKNOWN and REJECTED never pass; commercial=True also excludes noncommercial-only data."""
     if rec.state in (LicenseState.UNKNOWN, LicenseState.REJECTED):
         return GateDecision(False, f"{rec.dataset_id}: licence state {rec.state.value}")
     if not rec.license.strip() or not rec.revision.strip():
@@ -28,7 +25,6 @@ def check_dataset(rec: DatasetRecord, commercial: bool = False) -> GateDecision:
     if rec.state not in _TRAIN:
         return GateDecision(False, f"{rec.dataset_id}: state {rec.state.value}")
     return GateDecision(True, "ok")
-
 
 def training_eligible(rec: DatasetRecord, commercial: bool = False) -> bool:
     return check_dataset(rec, commercial).allowed

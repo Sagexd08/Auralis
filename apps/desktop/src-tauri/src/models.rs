@@ -15,7 +15,6 @@ pub const CATALOG: &[ModelSpec] = &[
     ModelSpec { file: "ggml-medium.en-q5_1.bin", label: "medium.en — most accurate, needs a fast CPU/GPU", size_mb: 539 },
 ];
 
-
 #[derive(Serialize, Clone)]
 pub struct ModelInfo {
     pub file: String,
@@ -31,7 +30,6 @@ pub fn models_dir(app: &AppHandle) -> PathBuf {
         .join("models")
 }
 
-/// Models shipped inside the installer (read-only, next to the executable).
 fn bundled_models_dir(app: &AppHandle) -> Option<PathBuf> {
     app.path().resource_dir().ok().map(|d| d.join("models"))
 }

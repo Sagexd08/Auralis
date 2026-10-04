@@ -2,9 +2,7 @@ import json
 from pathlib import Path
 from .provenance import DatasetRecord
 
-
 class Registry:
-    """Dataset registry stored as one JSON record per line (diff-friendly)."""
 
     def __init__(self, path):
         self.path = Path(path)

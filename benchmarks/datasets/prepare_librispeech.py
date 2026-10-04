@@ -1,12 +1,3 @@
-"""Pulls a small slice of the LibriSpeech `test-clean` split via Hugging Face
-`datasets` (streaming, so only the requested clip count is downloaded) and
-writes it out as a manifest.json + WAV files in the same shape
-`run_variant.py` and the fixture smoke-test set already use.
-
-Not run as part of normal Phase 1/benchmark-harness-setup work — this
-downloads real audio from the Hugging Face Hub and is meant to be invoked
-on demand by whoever runs a full benchmark pass, not automatically.
-"""
 import argparse
 import json
 import wave
