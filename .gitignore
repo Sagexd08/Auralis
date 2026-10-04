@@ -16,3 +16,8 @@ benchmarks/reports/*.md
 .vercel/
 .impeccable/
 .agents/
+
+# local tooling: agent skills + launch video project
+.claude/
+skills-lock.json
+launch-video/
