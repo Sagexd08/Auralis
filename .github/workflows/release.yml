@@ -1,8 +1,5 @@
 name: Release
 
-# Builds the Windows installer. Push a tag like v0.2.0 to publish a GitHub
-# Release with the installer attached, or run it by hand to get the installer
-# as a workflow artifact without publishing anything.
 on:
   push:
     tags: ["v*"]
@@ -16,8 +13,6 @@ jobs:
     name: Windows installer (NSIS)
     runs-on: windows-latest
     env:
-      # Exposed at job level so the signing step's `if` can test it
-      # (secrets themselves can't be used in `if` conditions).
       WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
     steps:
       - uses: actions/checkout@v4
@@ -34,9 +29,6 @@ jobs:
           cache: npm
           cache-dependency-path: apps/desktop/package-lock.json
 
-      # whisper-rs-sys uses bindgen 0.69, which produces broken bindings with
-      # the LLVM 20+ preinstalled on the runner (see README "libclang note").
-      # A pip-installed libclang is a known-good version.
       - name: Install a bindgen-compatible libclang
         shell: pwsh
         run: |
@@ -48,11 +40,6 @@ jobs:
         working-directory: apps/desktop
         run: npm ci
 
-      # Code signing is optional: with no WINDOWS_CERTIFICATE secret the
-      # installer is built unsigned (Windows SmartScreen will warn on it).
-      # To sign, add these repository secrets:
-      #   WINDOWS_CERTIFICATE           base64-encoded .pfx
-      #   WINDOWS_CERTIFICATE_PASSWORD  its password
       - name: Import signing certificate
         if: env.WINDOWS_CERTIFICATE != ''
         shell: pwsh
@@ -92,3 +79,4 @@ jobs:
         with:
           files: target/release/bundle/nsis/*.exe
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

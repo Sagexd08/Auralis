@@ -1,10 +1,6 @@
 use anyhow::{bail, Context, Result};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut};
 
-/// Parses a human-typed hotkey string like "Ctrl+Shift+Space" into a
-/// `Shortcut`. Case-insensitive, `+`-separated, modifiers in any order.
-/// Used both at startup (loading saved config) and when the settings UI
-/// saves a rebind, so the same validation applies in both places.
 pub fn parse(s: &str) -> Result<Shortcut> {
     let mut modifiers = Modifiers::empty();
     let mut code = None;

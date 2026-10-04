@@ -5,34 +5,15 @@ use log::{debug, warn};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-/// How much trailing silence ends an utterance in continuous mode — long
-/// enough that a normal mid-sentence breath doesn't split it, short enough
-/// that sentence boundaries feel responsive.
 const TRAILING_SILENCE_MS: u32 = 700;
-/// How much native-rate audio to batch up before resampling it to 48kHz for
-/// VAD classification in continuous mode. VAD timing precision only needs to
-/// be good to within a fraction of `TRAILING_SILENCE_MS`, so batching avoids
-/// re-initializing the sinc resampler on every tiny ~10-20ms capture chunk.
 const CLASSIFY_CHUNK_MS: u64 = 300;
 const VAD_FRAME_SAMPLES_48K: usize = 480;
-/// How long after an utterance a spoken "change X to Y" is still treated as a
-/// correction of it. Past this the user has almost certainly moved on, and
-/// backspacing over unrelated text would destroy their work, so the phrase is
-/// dictated as ordinary text instead.
 pub const CORRECTION_WINDOW: Duration = Duration::from_secs(45);
 
-/// What a finalized utterance should do to the target application's text.
-/// Produced by [`Pipeline`] and consumed by an injection layer that knows how
-/// to insert or undo OS-level keystrokes (outside this crate's scope).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Transcript {
-    /// No speech was detected (silence, or VAD trimmed everything away).
     Empty,
-    /// New dictation: insert as-is.
     Fresh(String),
-    /// A spoken correction ("actually, change X to Y"): the caller should
-    /// undo whatever it inserted for the previous utterance and insert
-    /// `replacement` in its place, rather than appending after it.
     Correction(String),
 }
 
@@ -48,10 +29,6 @@ impl Pipeline {
         Self::with_cleanup_mode(model_path, CleanupModeHandle::default())
     }
 
-    /// Builds a pipeline that reads its cleanup mode from `cleanup_mode` on
-    /// every utterance, so callers can change it at any time — including while
-    /// a continuous-dictation session is running — by writing to their own
-    /// clone of the handle.
     pub fn with_cleanup_mode(model_path: &Path, cleanup_mode: CleanupModeHandle) -> Result<Self> {
         Ok(Self {
             stt: SttEngine::load(model_path)?,
@@ -65,9 +42,6 @@ impl Pipeline {
         self.cleanup_mode.get()
     }
 
-    /// Captures audio from `capture` while `is_held` returns true (polled every
-    /// 20ms) and returns the raw native-rate samples. Takes no `self` so a
-    /// caller can record without holding whatever lock guards the pipeline.
     pub fn record_while(capture: &AudioCapture, mut is_held: impl FnMut() -> bool) -> Vec<f32> {
         let mut raw_samples: Vec<f32> = Vec::new();
         while is_held() {
@@ -78,24 +52,15 @@ impl Pipeline {
         raw_samples
     }
 
-    /// Transcribes a buffer produced by [`Pipeline::record_while`].
     pub fn transcribe_recording(&mut self, raw_samples: &[f32], native_rate: u32) -> Result<Transcript> {
         self.process_utterance(raw_samples, native_rate)
     }
 
-    /// Runs one push-to-talk cycle: records while `is_held`, then transcribes.
     pub fn run_once(&mut self, capture: &AudioCapture, is_held: impl FnMut() -> bool) -> Result<Transcript> {
         let raw_samples = Self::record_while(capture, is_held);
         self.process_utterance(&raw_samples, capture.sample_rate)
     }
 
-    /// Runs continuous/toggle dictation: keeps capturing and auto-segmenting
-    /// speech via VAD while `should_continue` returns true, calling
-    /// `on_utterance` with each finalized result as soon as that utterance's
-    /// trailing silence is detected — so callers can insert text
-    /// incrementally instead of waiting for the whole session to end. Flushes
-    /// one final in-progress utterance (if any) once `should_continue`
-    /// returns false, then returns.
     pub fn run_continuous(
         &mut self,
         capture: &AudioCapture,
@@ -153,8 +118,6 @@ impl Pipeline {
         }
     }
 
-    /// Resample -> VAD trim -> denoise -> resample -> STT -> text cleanup,
-    /// shared by both push-to-talk and continuous mode.
     fn process_utterance(&mut self, raw_samples: &[f32], native_rate: u32) -> Result<Transcript> {
         debug!(
             "captured {} samples @ {}Hz ({:.2}s)",
@@ -205,16 +168,10 @@ impl Pipeline {
         Ok(transcript)
     }
 
-    /// Whether the previous utterance is too old to be the target of a
-    /// spoken correction.
     fn is_stale(last_at: Option<Instant>, now: Instant) -> bool {
         last_at.is_some_and(|at| now.duration_since(at) > CORRECTION_WINDOW)
     }
 
-    /// Pure decision logic, factored out of `process_utterance` so it's
-    /// testable without a loaded STT model: decides whether `cleaned` is a
-    /// spoken correction of `prev` or fresh dictation, and advances `prev` to
-    /// match what the caller will end up with in the target application.
     fn classify_output(prev: &mut Option<String>, cleaned: String) -> Transcript {
         let transcript = match prev.as_deref().and_then(|p| text::detect_correction(p, &cleaned)) {
             Some(revised) => Transcript::Correction(revised),

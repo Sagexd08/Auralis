@@ -1,10 +1,3 @@
-//! Benchmark CLI: transcribes a single WAV file with a chosen preprocessing
-//! variant and prints the transcript to stdout. Invoked by the Python
-//! benchmark harness (`benchmarks/runners/run_variant.py`), which measures
-//! wall-clock time around the subprocess call itself and reads audio
-//! duration independently — this binary's only job is "file in, transcript
-//! out" so the harness can vary model/preprocessing/dataset without any
-//! Rust changes.
 use anyhow::{Context, Result};
 use auralis_runtime::{denoise, quality, resample, stt::SttEngine, vad};
 use clap::{Parser, ValueEnum};
@@ -12,30 +5,21 @@ use std::path::PathBuf;
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
 enum Preprocess {
-    /// Resample straight to 16kHz, no VAD trimming or denoising.
     Raw,
-    /// Resample to 48kHz, VAD-trim silence, RNNoise-denoise, resample to 16kHz —
-    /// the same chain the live desktop pipeline uses.
     VadDenoise,
 }
 
 #[derive(Parser, Debug)]
 struct Args {
-    /// Path to a GGUF whisper.cpp model file.
     #[arg(long)]
     model: PathBuf,
 
-    /// Path to a WAV file (any sample rate; mono or multi-channel).
     #[arg(long)]
     input: PathBuf,
 
-    /// Preprocessing variant to apply before transcription.
     #[arg(long, value_enum, default_value_t = Preprocess::Raw)]
     preprocess: Preprocess,
 
-    /// Also report input audio quality (SNR, speech ratio, RMS, clipping) on
-    /// stderr. Kept off stdout so the harness still reads exactly one line of
-    /// transcript there.
     #[arg(long)]
     quality: bool,
 }

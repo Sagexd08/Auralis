@@ -17,76 +17,38 @@ use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
-/// Shared mutable state, reachable from hotkey handlers and Tauri commands
-/// alike via `app.state::<AppState>()`.
 struct AppState {
     config: Mutex<AppConfig>,
     config_dir: PathBuf,
     pipeline: Arc<Mutex<Option<Pipeline>>>,
     held: Arc<AtomicBool>,
-    /// True from a push-to-talk press until its recording ends. Rejects the
-    /// OS key-repeat presses that arrive while the key is held, and stops
-    /// push-to-talk and continuous mode from capturing at the same time.
     ptt_active: Arc<AtomicBool>,
     continuous_active: Arc<AtomicBool>,
     downloading: Arc<AtomicBool>,
-    /// Bumped on every status change so a delayed "hide the overlay" only
-    /// fires if nothing newer has been shown since.
     status_gen: Arc<AtomicU64>,
-    /// Set when startup couldn't register the hotkeys; shown in Settings.
     startup_warning: Mutex<Option<String>>,
-    /// What this app most recently typed via keystroke injection, or `None`
-    /// if nothing was typed (clipboard fallback, injection error, or nothing
-    /// inserted yet). Lets a spoken correction backspace exactly what it
-    /// typed and retype in place, instead of appending the corrected
-    /// sentence after it.
     last_insertion: Arc<Mutex<Option<LastInsertion>>>,
-    /// Read by the pipeline on every utterance. Held here as well as in the
-    /// pipeline so a settings save can change it without taking the pipeline
-    /// lock, which continuous dictation holds for a whole session.
     cleanup_mode: CleanupModeHandle,
 }
 
-/// Locks `m`, recovering the data if another thread panicked while holding it
-/// rather than turning one failed dictation into a permanently dead app.
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-/// Bookkeeping for one completed keystroke insertion.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct LastInsertion {
-    /// The separator typed immediately before the utterance text: `" "`
-    /// between consecutive utterances, `""` for the first one. A correction
-    /// has to retype this, because the backspaces that undo the insertion
-    /// delete the separator too.
     separator: String,
-    /// Characters in separator + text, i.e. exactly how many backspaces undo
-    /// this insertion.
     total_chars: usize,
-    /// When it landed. A correction or a separating space only makes sense
-    /// shortly after, before the user has likely clicked elsewhere.
     at: Instant,
 }
 
-/// What to type next, and what to remember once it lands. Pure bookkeeping,
-/// kept separate from the `AppHandle`-bound apply step so the character
-/// arithmetic a correction depends on is unit-testable without a running
-/// Tauri app.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Insertion {
-    /// Exact text to type, separator included.
     text: String,
-    /// Backspaces to send first; 0 for a fresh insertion.
     undo_chars: usize,
-    /// What to record as the new `last_insertion` on success.
     record: LastInsertion,
 }
 
-/// Plans a fresh insertion. Consecutive utterances (as continuous mode
-/// produces) get a leading space so words don't run together; the very first
-/// insertion, one after a clipboard fallback left nothing typed, and one long
-/// after the previous (the cursor has probably moved) don't.
 fn plan_fresh(previous: Option<&LastInsertion>, text: &str) -> Insertion {
     let recent = previous.is_some_and(|p| p.at.elapsed() <= CORRECTION_WINDOW);
     let separator = if recent { " " } else { "" };
@@ -102,10 +64,6 @@ fn plan_fresh(previous: Option<&LastInsertion>, text: &str) -> Insertion {
     }
 }
 
-/// Plans a spoken correction: undo the whole previous insertion, then retype
-/// it with `replacement` as the body. The separator is carried over
-/// deliberately — undoing `previous.total_chars` deletes it, so retyping
-/// without it would run the correction into the utterance before it.
 fn plan_correction(previous: &LastInsertion, replacement: &str) -> Insertion {
     let full = format!("{}{}", previous.separator, replacement);
     Insertion {
@@ -119,9 +77,6 @@ fn plan_correction(previous: &LastInsertion, replacement: &str) -> Insertion {
     }
 }
 
-/// Shows `text` everywhere the user can see status: the overlay pill, the tray
-/// tooltip, and the `auralis://status` event. Progress states keep the overlay
-/// up; "Idle" hides it; anything else (a result or an error) shows briefly.
 fn set_status(app: &AppHandle, text: impl Into<String>) {
     let text: String = text.into();
     let _ = app.emit("auralis://status", &text);
@@ -153,10 +108,6 @@ fn set_status(app: &AppHandle, text: impl Into<String>) {
     }
 }
 
-/// Emits a transcript event and applies it (inserting fresh text, or
-/// replacing the previously-inserted text in place for a spoken correction),
-/// updating the status either way. Shared by push-to-talk and continuous mode
-/// so both report status identically.
 fn handle_transcript_result(handle: &AppHandle, last_insertion: &Mutex<Option<LastInsertion>>, result: anyhow::Result<Transcript>) {
     match result {
         Ok(Transcript::Fresh(text)) => {
@@ -187,10 +138,6 @@ fn handle_transcript_result(handle: &AppHandle, last_insertion: &Mutex<Option<La
     }
 }
 
-/// Carries out `plan` via keystroke injection (backspacing first if it is a
-/// correction), records what landed so a later correction can undo exactly
-/// that much, and reports status. A clipboard fallback or an outright failure
-/// clears the record, since nothing was typed for a correction to undo.
 fn apply(
     handle: &AppHandle,
     last_insertion: &Mutex<Option<LastInsertion>>,
@@ -226,8 +173,6 @@ const MODEL_NOT_READY: &str = "Model not ready — open Settings to download one
 fn handle_push_to_talk_event(app: &AppHandle, state: &AppState, event: tauri_plugin_global_shortcut::ShortcutEvent) {
     match event.state() {
         ShortcutState::Pressed => {
-            // Ignore OS key-repeat while held, a press during continuous
-            // dictation, and a press while another recording is still open.
             if state.continuous_active.load(Ordering::SeqCst) || state.ptt_active.swap(true, Ordering::SeqCst) {
                 return;
             }
@@ -263,8 +208,6 @@ fn handle_push_to_talk_event(app: &AppHandle, state: &AppState, event: tauri_plu
                     }
                 };
 
-                // Record without holding the pipeline lock, so a still-running
-                // transcription never makes the user's speech wait.
                 let samples = Pipeline::record_while(&capture, || held.load(Ordering::SeqCst));
                 let sample_rate = capture.sample_rate;
                 drop(capture);
@@ -294,8 +237,6 @@ fn handle_toggle_event(app: &AppHandle, state: &AppState, event: tauri_plugin_gl
 
     let was_active = state.continuous_active.fetch_xor(true, Ordering::SeqCst);
     if was_active {
-        // Flag flip alone stops the running thread's loop (it polls this
-        // same flag); nothing else to do here.
         return;
     }
 
@@ -337,8 +278,6 @@ fn handle_toggle_event(app: &AppHandle, state: &AppState, event: tauri_plugin_gl
     });
 }
 
-/// Parses and registers both hotkeys from `config`. Callers must
-/// `unregister_all()` first if re-registering after a rebind.
 fn register_hotkeys(app: &AppHandle, config: &AppConfig) -> anyhow::Result<()> {
     let ptt_shortcut = hotkey::parse(&config.push_to_talk_hotkey)?;
     let toggle_shortcut = hotkey::parse(&config.toggle_hotkey)?;
@@ -376,8 +315,6 @@ fn show_settings_window(app: &AppHandle) {
     }
 }
 
-/// Downloads `file` unless a download is already running, mirroring progress
-/// to the overlay and to the settings window.
 fn download_with_status(app: &AppHandle, file: &str) -> anyhow::Result<PathBuf> {
     let state = app.state::<AppState>();
     if state.downloading.swap(true, Ordering::SeqCst) {
@@ -395,9 +332,6 @@ fn download_with_status(app: &AppHandle, file: &str) -> anyhow::Result<PathBuf> 
     result
 }
 
-/// Makes sure a pipeline is loaded for the configured model, downloading it
-/// first if it's a known model that isn't on disk yet (the first-run path for
-/// an installed app, which ships without model weights). Blocking.
 fn ensure_pipeline(app: &AppHandle) -> anyhow::Result<()> {
     let state = app.state::<AppState>();
     if lock(&state.pipeline).is_some() {
@@ -432,8 +366,6 @@ fn list_models(app: AppHandle) -> Vec<models::ModelInfo> {
     models::list(&app)
 }
 
-/// Downloads a catalog model; progress arrives as `auralis://model-progress`
-/// events. If no model was loaded yet, loads the configured one afterwards.
 #[tauri::command]
 async fn download_model(app: AppHandle, file: String) -> Result<(), String> {
     let app_for_job = app.clone();
@@ -451,8 +383,6 @@ async fn download_model(app: AppHandle, file: String) -> Result<(), String> {
     Ok(())
 }
 
-/// The cleanup modes this build supports, for the settings dropdown — so the
-/// UI can't offer a mode `save_config` would then reject.
 #[tauri::command]
 fn list_cleanup_modes() -> Vec<String> {
     CleanupMode::all().iter().map(|m| m.as_str().to_string()).collect()
@@ -463,10 +393,6 @@ fn list_mic_devices() -> Vec<String> {
     auralis_runtime::audio::list_input_device_names().unwrap_or_default()
 }
 
-/// Applies and persists settings. Everything that can fail (hotkey parsing,
-/// loading the new model, registering the new hotkeys) happens before the live
-/// state is replaced, and a failed rebind restores the previous hotkeys, so an
-/// invalid save never leaves the app without working shortcuts or a model.
 #[tauri::command]
 async fn save_config(app: AppHandle, new_config: AppConfig) -> Result<(), String> {
     let state = app.state::<AppState>();
@@ -522,9 +448,6 @@ async fn save_config(app: AppHandle, new_config: AppConfig) -> Result<(), String
         .map_err(|e| format!("applied, but couldn't be saved for next launch: {e}"))
 }
 
-/// Parks the status overlay at the bottom-centre of the primary monitor and
-/// makes it click-through, so it never intercepts input or competes with the
-/// application the user is dictating into.
 fn place_overlay(app: &tauri::App) {
     let Some(window) = app.get_webview_window("main") else { return };
     let _ = window.set_ignore_cursor_events(true);
@@ -543,8 +466,6 @@ pub fn run() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
 
     tauri::Builder::default()
-        // Must be first: a second launch would otherwise fight the first for
-        // the global hotkeys and the microphone. It just opens Settings.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_settings_window(app)))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
@@ -592,9 +513,6 @@ pub fn run() {
 
             place_overlay(app);
 
-            // A hotkey another program already owns (Ctrl+Space is an input-
-            // method toggle on some setups) must not kill a tray-only app with
-            // no window to explain why: surface it in Settings instead.
             if let Err(e) = register_hotkeys(app.handle(), &config) {
                 error!("failed to register hotkeys: {e:#}");
                 *lock(&app.state::<AppState>().startup_warning) = Some(format!(
@@ -603,8 +521,6 @@ pub fn run() {
                 show_settings_window(app.handle());
             }
 
-            // Loading (and, on first run, downloading) the model takes seconds
-            // to minutes, so it must not block startup.
             let handle = app.handle().clone();
             std::thread::spawn(move || {
                 if let Err(e) = ensure_pipeline(&handle) {
@@ -623,8 +539,6 @@ pub fn run() {
 mod tests {
     use super::*;
 
-    /// Replays a plan against a buffer the way the OS would: backspaces pop
-    /// characters off the end, then the plan's text is typed.
     fn type_into(buffer: &mut String, plan: &Insertion) {
         for _ in 0..plan.undo_chars {
             buffer.pop();

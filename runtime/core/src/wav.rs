@@ -1,8 +1,6 @@
 use anyhow::{Context, Result};
 use std::io::Read;
 
-/// Decodes a WAV stream (any sample rate, integer or float, mono or
-/// multi-channel) to mono f32 samples plus the sample rate.
 pub fn decode_wav_mono_f32(source: impl Read) -> Result<(Vec<f32>, u32)> {
     let mut reader = hound::WavReader::new(source).context("not a readable WAV file")?;
     let spec = reader.spec();

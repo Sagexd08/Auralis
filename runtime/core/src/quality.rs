@@ -1,39 +1,16 @@
-//! Audio quality analysis (PRD §11): cheap, measurable signal statistics for
-//! a captured utterance, used to explain *why* a transcript came out the way
-//! it did rather than to guess at it.
-//!
-//! This reports only what is actually computed from the waveform. The PRD's
-//! `reverb_score` and `noise_class` fields need trained models that do not
-//! exist in this repo yet, so they are deliberately absent instead of
-//! stubbed with a fabricated number.
-
 use crate::vad::{self, FRAME_SAMPLES};
 
-/// Any sample at or past this magnitude is treated as clipped. Just under
-/// full scale, since a converter that saturates usually lands a hair below
-/// 1.0 after the int -> float conversion in `audio.rs`.
 const CLIP_THRESHOLD: f32 = 0.999;
 
-/// Measured characteristics of one 48kHz mono utterance.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AudioQuality {
-    /// Speech-to-noise ratio in dB, estimated as the power of VAD-flagged
-    /// speech frames over the power of the rest. `None` when the buffer has
-    /// no speech frames, or no non-speech frames to estimate noise from —
-    /// there is no honest number to report in those cases.
     pub snr_db: Option<f32>,
-    /// Fraction of 10ms frames the VAD flagged as speech, `0.0..=1.0`.
     pub speech_probability: f32,
-    /// Whether any sample reached full scale, i.e. input gain is too high and
-    /// the waveform is being squared off.
     pub clipping: bool,
-    /// Root-mean-square level of the whole buffer, `0.0..=1.0`. Very low
-    /// values mean the mic is barely picking the speaker up.
     pub rms: f32,
 }
 
 impl AudioQuality {
-    /// A compact one-line form for logs.
     pub fn summary(&self) -> String {
         let snr = match self.snr_db {
             Some(db) => format!("{db:.1}dB"),
@@ -48,9 +25,6 @@ impl AudioQuality {
     }
 }
 
-/// Analyzes a 48kHz mono f32 buffer. Frames are the same 480-sample (10ms)
-/// frames the VAD and denoiser use, so the speech/noise split here matches
-/// the one the rest of the pipeline acts on.
 pub fn analyze_48k(samples: &[f32]) -> AudioQuality {
     if samples.is_empty() {
         return AudioQuality {

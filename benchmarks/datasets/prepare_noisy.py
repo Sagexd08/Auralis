@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Synthetically mixes a clean dataset's clips with procedurally generated
 white noise at a controlled SNR, producing a "noisy" sibling dataset with
 the same manifest (same references, same clip ids) so the runner can run
@@ -16,7 +15,6 @@ from pathlib import Path
 
 import numpy as np
 
-
 def read_wav(path: Path) -> tuple[np.ndarray, int]:
     with wave.open(str(path), "rb") as wf:
         sample_rate = wf.getframerate()
@@ -24,7 +22,6 @@ def read_wav(path: Path) -> tuple[np.ndarray, int]:
         raw = wf.readframes(n_frames)
         samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
     return samples, sample_rate
-
 
 def write_wav(path: Path, samples: np.ndarray, sample_rate: int) -> None:
     clipped = np.clip(samples, -1.0, 1.0)
@@ -35,7 +32,6 @@ def write_wav(path: Path, samples: np.ndarray, sample_rate: int) -> None:
         wf.setframerate(sample_rate)
         wf.writeframes(pcm.tobytes())
 
-
 def mix_at_snr(signal: np.ndarray, noise: np.ndarray, snr_db: float) -> np.ndarray:
     """Scales `noise` so the mix hits the target SNR (in dB), then mixes it in."""
     signal_power = np.mean(signal**2) + 1e-12
@@ -43,7 +39,6 @@ def mix_at_snr(signal: np.ndarray, noise: np.ndarray, snr_db: float) -> np.ndarr
     target_noise_power = signal_power / (10.0 ** (snr_db / 10.0))
     scale = np.sqrt(target_noise_power / noise_power)
     return signal + noise * scale
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -67,7 +62,6 @@ def main() -> None:
 
     (args.dest / "manifest.json").write_text(json.dumps(manifest, indent=2))
     print(f"Wrote {len(manifest['clips'])} noisy clip(s) to {args.dest} at {args.snr_db} dB SNR")
-
 
 if __name__ == "__main__":
     main()

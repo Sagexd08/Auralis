@@ -2,8 +2,6 @@ use anyhow::{Context, Result};
 use std::path::Path;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
-/// Beam width for decoding. 5 is whisper.cpp's own default for beam search and
-/// the point where WER gains flatten out against the added decode cost.
 const BEAM_SIZE: i32 = 5;
 
 pub struct SttEngine {
@@ -23,7 +21,6 @@ impl SttEngine {
         Ok(Self { context })
     }
 
-    /// Transcribes mono f32 PCM sampled at 16kHz (whisper.cpp's required input rate).
     pub fn transcribe(&self, samples_16k: &[f32]) -> Result<String> {
         let mut state = self.context.create_state().context("failed to create whisper state")?;
 

@@ -6,9 +6,6 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 
-/// A whisper.cpp model Auralis knows how to download. Only catalog entries can
-/// be fetched, so a model name from the UI can never turn into an arbitrary
-/// URL or a path outside the models directory.
 pub struct ModelSpec {
     pub file: &'static str,
     pub label: &'static str,
@@ -21,9 +18,7 @@ pub const CATALOG: &[ModelSpec] = &[
     ModelSpec { file: "ggml-medium.en-q5_1.bin", label: "medium.en — most accurate, needs a fast CPU/GPU", size_mb: 539 },
 ];
 
-/// whisper.cpp ggml files start with the little-endian magic of "ggml".
 const GGML_MAGIC: &[u8; 4] = b"lmgg";
-/// Anything smaller than this is an error page or a truncated download.
 const MIN_MODEL_BYTES: u64 = 10 * 1024 * 1024;
 
 #[derive(Serialize, Clone)]
@@ -41,8 +36,6 @@ pub struct DownloadProgress {
     pub total: Option<u64>,
 }
 
-/// Where downloaded models live: the per-user app data dir, so an installed
-/// build works without write access to Program Files.
 pub fn models_dir(app: &AppHandle) -> PathBuf {
     app.path()
         .app_local_data_dir()
@@ -50,8 +43,6 @@ pub fn models_dir(app: &AppHandle) -> PathBuf {
         .join("models")
 }
 
-/// In debug builds, also look in the repo's `models/` folder so
-/// `models/pull-model.ps1` keeps working during development.
 fn dev_models_dir() -> Option<PathBuf> {
     if cfg!(debug_assertions) {
         Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../models"))
@@ -64,7 +55,6 @@ fn is_plain_filename(file: &str) -> bool {
     !file.is_empty() && !file.contains(['/', '\\']) && !file.contains("..")
 }
 
-/// Resolves a model filename to an existing file, or `None` if not installed.
 pub fn find(app: &AppHandle, file: &str) -> Option<PathBuf> {
     if !is_plain_filename(file) {
         return None;
@@ -88,7 +78,6 @@ fn installed_files(app: &AppHandle) -> Vec<String> {
     names
 }
 
-/// Catalog models (installed or not) plus any other `.bin` the user dropped in.
 pub fn list(app: &AppHandle) -> Vec<ModelInfo> {
     let installed = installed_files(app);
     let mut out: Vec<ModelInfo> = CATALOG
@@ -108,10 +97,6 @@ pub fn list(app: &AppHandle) -> Vec<ModelInfo> {
     out
 }
 
-/// Downloads a catalog model into [`models_dir`], reporting progress. Writes to
-/// a `.part` file and only renames it into place after the size and ggml magic
-/// check out, so an interrupted download never leaves a half-model that looks
-/// installed.
 pub fn download(app: &AppHandle, file: &str, mut on_progress: impl FnMut(DownloadProgress)) -> Result<PathBuf> {
     let spec = CATALOG
         .iter()

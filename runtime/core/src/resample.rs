@@ -1,6 +1,5 @@
 use rubato::{SincFixedIn, SincInterpolationParameters, SincInterpolationType, Resampler, WindowFunction};
 
-/// Resamples mono f32 PCM from `from_hz` to `to_hz`. No-op if the rates match.
 pub fn resample(input: &[f32], from_hz: u32, to_hz: u32) -> Vec<f32> {
     if from_hz == to_hz || input.is_empty() {
         return input.to_vec();
