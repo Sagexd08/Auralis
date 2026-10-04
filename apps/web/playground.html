@@ -295,16 +295,17 @@
       return;
     }
     ws.binaryType = 'arraybuffer';
-    var startedAt = 0, firstSent = 0, stopAt = 0, gotFirst = false;
+    var startedAt = 0, firstSent = 0, stopAt = 0, gotFirst = false, settled = false;
 
     ws.onerror = function () {
+      settled = true;
       setState('Idle');
       setServerStatus('Not reachable. Is the server running with --allow-origin for this site?', false);
       teardown();
     };
     ws.onclose = function () {
       if (session) teardown();
-      setState('Idle');
+      if (!settled) setState('Idle');
     };
     ws.onmessage = function (event) {
       var m;
@@ -323,9 +324,12 @@
         els.fin.textContent = seconds(performance.now() - stopAt);
         els.rtf.textContent = m.rtf.toFixed(2);
         els.audio.textContent = m.duration_s.toFixed(1) + ' s';
+        settled = true;
         setState('Done');
+        els.hint.textContent = 'Done. Press the button to try again.';
         ws.close();
       } else if (m.type === 'error') {
+        settled = true;
         els.hint.textContent = m.error;
         setState('Error');
       }
