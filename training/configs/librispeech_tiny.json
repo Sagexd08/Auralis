@@ -1,0 +1,16 @@
+{
+  "corpus_dir": "C:/Users/sohom/auralis-data/corpora",
+  "corpus_name": "librispeech-dev-clean",
+  "out_dir": "C:/Users/sohom/auralis-data/runs/ls-tiny-001",
+  "vocab_size": 256,
+  "batch_size": 8,
+  "grad_accum": 2,
+  "lr": 0.001,
+  "warmup_steps": 300,
+  "max_steps": 3000,
+  "eval_every": 500,
+  "val_pct": 5,
+  "max_seconds": 16.0,
+  "amp": true,
+  "model": {"d_model": 144, "n_layers": 6, "n_heads": 4, "conv_kernel": 15, "dropout": 0.1}
+}
