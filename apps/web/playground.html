@@ -119,7 +119,7 @@
 
       <div class="mt-6 rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
         <h2 class="text-sm font-semibold">Start the server</h2>
-        <p class="mt-2 text-xs leading-relaxed text-white/65">Run this on the computer you're using, then press Check connection. The allow flag lets this page talk to it; without it the browser is blocked on purpose.</p>
+        <p class="mt-2 text-xs leading-relaxed text-white/65">Run this on the computer you're using, then press Check connection. The allow flag lets this page talk to it; without it the browser is blocked on purpose. Chrome will also ask to allow local network access for this site: choose Allow.</p>
         <pre class="mt-3 overflow-x-auto rounded-xl bg-[#16140f] p-3 text-[0.72rem] leading-relaxed text-white/85"><code>auralis-server \
   --model models/ggml-base.en-q5_1.bin \
   --allow-origin https://auralis-speak.vercel.app</code></pre>
@@ -217,11 +217,41 @@
         return true;
       })
       .catch(function (e) {
-        setServerStatus(location.protocol === 'https:' || e.name === 'TypeError'
-          ? 'Not reachable. Is the server running with --allow-origin for this site?'
-          : String(e.message || e), false);
-        return false;
+        if (!(e instanceof TypeError)) {
+          setServerStatus(String(e.message || e), false);
+          return false;
+        }
+        return diagnose().then(function (why) {
+          setServerStatus(why, false);
+          return false;
+        });
       });
+  }
+
+  function startCommand() {
+    var origin = location.origin.indexOf('http') === 0 && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1'
+      ? ' --allow-origin ' + location.origin
+      : '';
+    return 'auralis-server --model models/ggml-base.en-q5_1.bin' + origin;
+  }
+
+  function diagnose() {
+    var permission = navigator.permissions && navigator.permissions.query
+      ? navigator.permissions.query({ name: 'local-network-access' }).then(function (p) { return p.state; }, function () { return 'unknown'; })
+      : Promise.resolve('unknown');
+    return permission.then(function (state) {
+      if (state === 'denied') {
+        return 'Your browser blocked this site from reaching your computer. Open the site settings in the address bar, set Local network access to Allow, then check again.';
+      }
+      return fetch('http://' + base() + '/healthz', { mode: 'no-cors', cache: 'no-store' }).then(
+        function () {
+          return 'The server is running but does not allow this site. Restart it with: ' + startCommand();
+        },
+        function () {
+          return 'Could not reach a server at ' + base() + '. Start it with: ' + startCommand() + (state === 'prompt' ? ' (and choose Allow if your browser asks about local network access)' : '');
+        }
+      );
+    });
   }
 
   function drawIdle() {
@@ -300,8 +330,11 @@
     ws.onerror = function () {
       settled = true;
       setState('Idle');
-      setServerStatus('Not reachable. Is the server running with --allow-origin for this site?', false);
       teardown();
+      diagnose().then(function (why) {
+        setServerStatus(why, false);
+        els.hint.textContent = why;
+      });
     };
     ws.onclose = function () {
       if (session) teardown();
@@ -419,7 +452,10 @@
       })
       .catch(function (e) {
         setState('Error');
-        els.hint.textContent = e instanceof TypeError ? 'Could not reach the server. Is it running with --allow-origin for this site?' : e.message;
+        if (e instanceof TypeError) {
+          return diagnose().then(function (why) { els.hint.textContent = why; });
+        }
+        els.hint.textContent = e.message;
       })
       .then(function () { els.file.value = ''; });
   });
