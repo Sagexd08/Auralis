@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Auralis Whitepaper</title>
+<meta name="description" content="How Auralis works: a local-first, push-to-talk dictation system for Windows. Privacy model, pipeline, text rules, API, measurement and limits." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script>document.documentElement.classList.add('js')</script>
+<style>
+  :root {
+    --bg: #0d0b09; --fg: #ffffff; --fg-2: rgba(255,255,255,.80); --fg-3: rgba(255,255,255,.64);
+    --rule: rgba(255,255,255,.12); --panel: rgba(255,255,255,.05); --accent: #e3ad5f; --ease: cubic-bezier(.16, 1, .3, 1);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 5.5rem; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; font-size: 1.0625rem; line-height: 1.75; }
+  ::selection { background: var(--accent); color: #16110a; }
+  a { color: inherit; text-underline-offset: .22em; text-decoration-color: rgba(227,173,95,.55); transition: color .2s, text-decoration-color .2s; }
+  a:hover { color: var(--accent); text-decoration-color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  code, kbd, pre { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  code { font-size: .88em; background: var(--panel); padding: .12em .4em; border-radius: .4em; color: #fff; }
+  #prog { position: fixed; inset: 0 0 auto 0; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: 0 50%; z-index: 60; }
+
+  header.top { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .9rem clamp(1.25rem, 4vw, 3rem); background: rgba(13,11,9,.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid transparent; transition: border-color .3s; }
+  header.top.scrolled { border-bottom-color: var(--rule); }
+  .brand { display: inline-flex; align-items: center; gap: .5rem; font-weight: 600; font-size: 1.125rem; text-decoration: none; color: #fff; }
+  .actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: .4rem; border-radius: 999px; padding: .55rem 1.05rem; font-size: .875rem; font-weight: 500; text-decoration: none; background: rgba(255,255,255,.1); color: #fff; border: 0; cursor: pointer; font-family: inherit; line-height: 1.4; transition: background-color .2s, transform .2s var(--ease), color .2s; }
+  .btn:hover { background: rgba(255,255,255,.17); color: #fff; }
+  .btn:active { transform: scale(.97); }
+  .btn.solid { background: var(--accent); color: #16110a; }
+  .btn.solid:hover { background: #efbd75; color: #16110a; }
+
+  .intro { max-width: 72rem; margin: 0 auto; padding: clamp(2.5rem, 7vw, 5rem) clamp(1.25rem, 4vw, 3rem) 1rem; }
+  .intro h1 { font-size: clamp(2rem, 5.2vw, 3.5rem); line-height: 1.12; letter-spacing: -.03em; font-weight: 600; margin: 0; max-width: 18ch; text-wrap: balance; }
+  .lead { font-size: clamp(1.0625rem, 1.6vw, 1.25rem); line-height: 1.6; color: var(--fg-2); max-width: 54ch; margin: 1.5rem 0 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.75rem; }
+  .chips span { font-family: 'Geist Mono', monospace; font-size: .75rem; padding: .45rem .9rem; border-radius: 999px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--rule); color: var(--fg-2); }
+  .short { margin-top: 2.5rem; display: grid; gap: 0; border-top: 1px solid var(--rule); }
+  @media (min-width: 760px) { .short { grid-template-columns: repeat(3, 1fr); } }
+  .short div { padding: 1.25rem 1.5rem 1.25rem 0; border-bottom: 1px solid var(--rule); }
+  @media (min-width: 760px) { .short div { border-bottom: 0; } }
+  .short b { display: block; font-weight: 600; margin-bottom: .25rem; }
+  .short p { margin: 0; font-size: .9688rem; line-height: 1.55; color: var(--fg-3); }
+
+  .layout { display: grid; gap: 2rem; max-width: 72rem; margin: 0 auto; padding: 2rem clamp(1.25rem, 4vw, 3rem) 6rem; }
+  @media (min-width: 960px) { .layout { grid-template-columns: 15rem minmax(0, 1fr); gap: 4.5rem; } }
+
+  nav.toc { font-size: .875rem; line-height: 1.35; }
+  nav.toc p { margin: 0 0 .75rem; color: var(--fg-3); }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; }
+  nav.toc a { display: block; padding: .5rem 0 .5rem .9rem; margin-left: -1px; border-left: 2px solid transparent; color: var(--fg-3); text-decoration: none; transition: color .2s, border-color .2s, padding-left .3s var(--ease); }
+  nav.toc a:hover { color: #fff; }
+  nav.toc a.active { color: #fff; border-left-color: var(--accent); padding-left: 1.15rem; }
+  @media (min-width: 960px) { nav.toc { position: sticky; top: 5.5rem; align-self: start; } nav.toc ol { border-left: 1px solid var(--rule); } }
+  @media (max-width: 959px) {
+    nav.toc { position: sticky; top: 3.7rem; z-index: 40; margin: 0 calc(clamp(1.25rem, 4vw, 3rem) * -1); padding: .6rem clamp(1.25rem, 4vw, 3rem); background: rgba(13,11,9,.85); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--rule); }
+    nav.toc p { display: none; }
+    nav.toc ol { display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; }
+    nav.toc a { white-space: nowrap; border: 0; padding: .4rem .85rem; margin: 0; border-radius: 999px; background: var(--panel); }
+    nav.toc a.active { background: var(--accent); color: #16110a; padding-left: .85rem; }
+  }
+
+  article { max-width: 44rem; min-width: 0; }
+  section.s { padding-top: 1rem; }
+  h2 { position: relative; font-size: clamp(1.5rem, 3vw, 1.875rem); line-height: 1.3; letter-spacing: -.02em; font-weight: 600; margin: 3.5rem 0 1.1rem; text-wrap: balance; }
+  h2 .anchor { position: absolute; left: -1.4rem; color: var(--accent); text-decoration: none; opacity: 0; transition: opacity .2s; font-weight: 400; }
+  h2:hover .anchor, h2 .anchor:focus-visible { opacity: 1; }
+  @media (max-width: 959px) { h2 .anchor { display: none; } }
+  h3 { font-size: 1.125rem; font-weight: 600; margin: 2rem 0 .5rem; }
+  p { margin: 0 0 1.15rem; color: var(--fg-2); }
+  article strong, article b { color: #fff; font-weight: 600; }
+  ul, ol.list { margin: 0 0 1.25rem; padding-left: 1.25rem; color: var(--fg-2); }
+  li { margin-bottom: .5rem; }
+  li::marker { color: var(--accent); }
+
+  .scroll { overflow-x: auto; margin: 1.25rem 0 1.5rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .9375rem; min-width: 30rem; }
+  th, td { text-align: left; padding: .75rem 1rem .75rem .5rem; border-bottom: 1px solid var(--rule); vertical-align: top; color: var(--fg-2); }
+  th { color: #fff; font-weight: 600; font-size: .8125rem; }
+  tbody tr { transition: background-color .2s; }
+  tbody tr:hover { background: var(--panel); }
+
+  .code { position: relative; margin: 1.25rem 0 1.5rem; }
+  pre { background: #16110a; border: 1px solid var(--rule); border-radius: 1rem; padding: 1.1rem 1.25rem; overflow-x: auto; font-size: .8125rem; line-height: 1.65; color: rgba(255,255,255,.9); margin: 0; scrollbar-color: rgba(255,255,255,.25) transparent; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .copy { position: absolute; top: .6rem; right: .6rem; font-family: 'Geist', sans-serif; font-size: .75rem; padding: .45rem .85rem; border-radius: 999px; border: 0; background: rgba(255,255,255,.1); color: #fff; cursor: pointer; opacity: 0; transition: opacity .2s, background-color .2s; }
+  .code:hover .copy, .copy:focus-visible { opacity: 1; }
+  .copy:hover { background: rgba(255,255,255,.2); } .copy.done { background: var(--accent); color: #16110a; opacity: 1; }
+  @media (hover: none) { .copy { opacity: 1; } }
+
+  .note { border-radius: 1rem; background: var(--panel); box-shadow: inset 0 0 0 1px var(--rule); padding: 1.1rem 1.3rem; margin: 1.75rem 0; }
+  .note p { margin: 0; font-size: .9688rem; }
+
+  .flow { list-style: none; padding: 0; margin: 1.5rem 0; display: grid; gap: .6rem; counter-reset: s; }
+  .flow li { counter-increment: s; margin: 0; display: grid; grid-template-columns: 2rem 1fr; gap: .5rem; align-items: start; background: var(--panel); box-shadow: inset 0 0 0 1px var(--rule); border-radius: 1rem; padding: .9rem 1.1rem; font-size: .9688rem; line-height: 1.6; transition: box-shadow .3s, transform .4s var(--ease); }
+  .flow li:hover { box-shadow: inset 0 0 0 1px rgba(227,173,95,.6); transform: translateX(3px); }
+  .flow li::before { content: counter(s); font-family: 'Geist Mono', monospace; font-size: .8125rem; font-variant-numeric: tabular-nums; color: var(--accent); padding-top: .15rem; }
+
+  .pager { display: flex; justify-content: space-between; gap: 1rem; margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); flex-wrap: wrap; }
+  .cta-end { margin-top: 3rem; padding: 2rem; border-radius: 1.25rem; background: var(--accent); color: #16110a; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+  .cta-end p { margin: 0; color: #16110a; font-weight: 600; font-size: 1.25rem; letter-spacing: -.01em; }
+  .cta-end .btn { background: #16110a; color: #fff; padding: .8rem 1.4rem; }
+  .cta-end .btn:hover { background: #000; color: #fff; }
+  #top-btn { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 50; opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .3s, transform .4s var(--ease); }
+  #top-btn.show { opacity: 1; transform: none; pointer-events: auto; }
+
+  footer { max-width: 72rem; margin: 0 auto; padding: 2rem clamp(1.25rem, 4vw, 3rem) 3rem; border-top: 1px solid var(--rule); color: var(--fg-3); font-size: .875rem; display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; justify-content: space-between; }
+
+  .js .rv { opacity: 0; transform: translateY(16px); transition: opacity .8s var(--ease), transform .8s var(--ease); }
+  .js .rv.in { opacity: 1; transform: none; }
+  .intro > * { animation: rise .9s var(--ease) both; } .intro h1 { animation-delay: .05s; } .intro .lead { animation-delay: .15s; } .intro .chips { animation-delay: .25s; } .intro .short { animation-delay: .35s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px); filter: blur(5px); } to { opacity: 1; transform: none; filter: none; } }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, .intro > * { animation: none !important; transition: none !important; } .js .rv { opacity: 1; transform: none; } }
+  @media print {
+    :root { --bg: #fff; --fg: #111; --fg-2: #222; --fg-3: #555; --rule: #ccc; --panel: #f3f3f3; --accent: #8a5a10; }
+    body { font-size: 11pt; } a { text-decoration: none; color: inherit; }
+    header.top, nav.toc, #top-btn, #prog, .pager, .cta-end, .copy, .chips { display: none !important; }
+    .layout { display: block; padding-top: 0; } pre { page-break-inside: avoid; background: #f3f3f3; color: #111; } code { color: #111; } h2 { page-break-after: avoid; margin-top: 2rem; }
+    .intro > * { animation: none; } .js .rv { opacity: 1; transform: none; } article strong, article b, th { color: #000; }
+  }
+</style>
+</head>
+<body>
+<div id="prog" aria-hidden="true"></div>
+<header class="top" id="hdr">
+  <a class="brand" href="index.html">
+    <svg width="24" height="24" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M 128 128 C 128 198.692 70.692 256 0 256 C 0 185.308 57.308 128 128 128 Z M 128 128 C 198.692 128 256 185.308 256 256 C 185.308 256 128 198.692 128 128 Z M 0 0 C 70.692 0 128 57.308 128 128 C 57.308 128 0 70.692 0 0 Z M 256 0 C 256 70.692 198.692 128 128 128 C 128 57.308 185.308 0 256 0 Z"/></svg>
+    auralis
+  </a>
+  <span class="actions">
+    <button class="btn" type="button" onclick="window.print()">Save as PDF</button>
+    <a class="btn solid" href="index.html#download">Get Auralis</a>
+  </span>
+</header>
+
+<div class="intro">
+  <h1>Local-first push-to-talk dictation</h1>
+  <p class="lead">How Auralis turns speech into typed text on your own machine, what each stage does, and what it does not do yet.</p>
+  <div class="chips"><span id="read">Whitepaper</span><span>Phase 1 vertical slice</span><span>MIT licensed</span><span><a href="https://github.com/Sagexd08/Auralis" style="text-decoration:none">Source on GitHub</a></span></div>
+  <div class="short">
+    <div><b>Nothing leaves your PC</b><p>No cloud speech service, no cloud text cleanup, no telemetry.</p></div>
+    <div><b>Works in any window</b><p>Hold a hotkey, speak, release. Text is typed where your cursor is.</p></div>
+    <div><b>Honest about status</b><p>The benchmark harness exists; no accuracy numbers are published yet.</p></div>
+  </div>
+</div>
+
+<div class="layout">
+  <nav class="toc" aria-label="Contents">
+    <p>On this page</p>
+    <ol id="toc">
+      <li><a href="#abstract">Abstract</a></li>
+      <li><a href="#goals">Design goals</a></li>
+      <li><a href="#privacy">Privacy model</a></li>
+      <li><a href="#pipeline">The pipeline</a></li>
+      <li><a href="#text">Text cleanup</a></li>
+      <li><a href="#system">System architecture</a></li>
+      <li><a href="#api">Local API</a></li>
+      <li><a href="#measure">Measurement</a></li>
+      <li><a href="#limits">Limitations</a></li>
+      <li><a href="#roadmap">Roadmap</a></li>
+    </ol>
+  </nav>
+
+  <article id="doc">
+    <section class="s" id="abstract">
+    <h2>Abstract<a class="anchor" href="#abstract" aria-label="Link to this section">#</a></h2>
+    <p>Auralis turns speech into typed text in any Windows application. The user holds a hotkey, speaks, and releases; the transcript is cleaned and typed into the window that has focus. Every stage, from microphone capture to keystroke injection, runs on the user’s own machine. No audio or text is sent to a cloud service, and the software collects no telemetry.</p>
+    <p>This paper describes what exists today: a Rust runtime, a Tauri desktop shell, a loopback HTTP API and a benchmark harness. It is deliberately a vertical slice built on an existing open speech model (whisper.cpp), not a custom-trained model or a distributed compute system.</p>
+    </section>
+
+    <section class="s" id="goals">
+    <h2>Design goals<a class="anchor" href="#goals" aria-label="Link to this section">#</a></h2>
+    <ul>
+      <li><b>Local by default.</b> A dictation tool hears everything the user says. The safest place for that audio is the machine that recorded it.</li>
+      <li><b>Works everywhere text goes.</b> Insertion happens at the keyboard level, so no per-application plugin is needed.</li>
+      <li><b>Predictable.</b> If transcription fails, nothing is typed. The user can always select the raw transcript with no rules applied.</li>
+      <li><b>Separable.</b> The pipeline lives in a reusable library, not inside the desktop app, so the same engine serves the app, the API and the benchmarks.</li>
+      <li><b>Honest.</b> Accuracy claims need a reproducible command behind them. Until the benchmark has been run on a real corpus, none are made.</li>
+    </ul>
+    </section>
+
+    <section class="s" id="privacy">
+    <h2>Privacy model<a class="anchor" href="#privacy" aria-label="Link to this section">#</a></h2>
+    <p>The privacy claim is structural, not a policy promise: the code path from microphone to keystroke contains no network client. The one place the desktop app uses the network is downloading model files, either the default model on first launch or others the user requests in Settings. Audio and transcripts are not part of that request.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Data</th><th>Where it goes</th></tr></thead>
+      <tbody>
+        <tr><td>Microphone audio</td><td>Held in memory on the PC during the utterance, then discarded after transcription.</td></tr>
+        <tr><td>Transcript</td><td>Typed into the focused window, or copied to the clipboard if typing is blocked.</td></tr>
+        <tr><td>Settings</td><td>A JSON file in the per-user app data folder.</td></tr>
+        <tr><td>Model files</td><td>Downloaded once from the model host into the per-user app data folder.</td></tr>
+        <tr><td>Usage data</td><td>Not collected.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note"><p>The local API binds to <code>127.0.0.1</code> by default. Binding it to another interface is an explicit flag, and the server has no authentication, so doing so is the operator’s decision.</p></div>
+    </section>
+
+    <section class="s" id="pipeline">
+    <h2>The pipeline<a class="anchor" href="#pipeline" aria-label="Link to this section">#</a></h2>
+    <p>One utterance passes through these stages in order.</p>
+    <ol class="flow">
+      <li><span><b>Hotkey.</b> A global hotkey starts capture: <code>Ctrl+Space</code> while held, or <code>Ctrl+Shift+Space</code> toggled for hands-free use. Handlers are guarded so rapid presses cannot deadlock or double-fire.</span></li>
+      <li><span><b>Capture.</b> Audio is read from the default input device with <code>cpal</code> and resampled to 16 kHz mono.</span></li>
+      <li><span><b>Quality analysis.</b> Before any processing, the utterance is measured: speech-to-noise ratio in dB, fraction of frames the VAD called speech, RMS level and whether the input clipped. SNR is reported as unavailable instead of a made-up number when the buffer lacks speech or noise frames.</span></li>
+      <li><span><b>Voice activity detection.</b> <code>webrtc-vad</code> trims leading and trailing silence from the held segment.</span></li>
+      <li><span><b>Denoising.</b> RNNoise, through the pure-Rust <code>nnnoiseless</code> crate, suppresses steady background noise.</span></li>
+      <li><span><b>Transcription.</b> whisper.cpp, through <code>whisper-rs</code>, decodes the audio with quantised GGUF weights. Decoding uses beam search (width 5), whisper.cpp’s temperature-fallback thresholds and <code>no_context</code>, which together suppress the repetition loops that greedy decoding with carried-over context can fall into.</span></li>
+      <li><span><b>Text cleanup.</b> Local rules shape the transcript according to the selected mode.</span></li>
+      <li><span><b>Insertion.</b> Keystrokes are simulated with <code>enigo</code>. If the target window rejects them, the text goes to the clipboard and the user is told.</span></li>
+    </ol>
+    <p>Model size is the largest accuracy lever. <code>base.en</code> (about 59 MB) is the fast default. <code>small.en</code> (about 190 MB) is better on proper nouns and accented speech at roughly three times the decode cost. Both run on CPU; the runtime can be built with <code>cuda</code> or <code>vulkan</code> features for GPU decoding.</p>
+    </section>
+
+    <section class="s" id="text">
+    <h2>Text cleanup and spoken corrections<a class="anchor" href="#text" aria-label="Link to this section">#</a></h2>
+    <p>How much the software may rewrite what you said is a setting, not a hidden behaviour.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Mode</th><th>Filler words removed</th><th>Capitalised</th><th>Terminal punctuation</th></tr></thead>
+      <tbody>
+        <tr><td><code>raw</code></td><td>No</td><td>No</td><td>No</td></tr>
+        <tr><td><code>clean</code> (default)</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+        <tr><td><code>polished</code></td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+        <tr><td><code>developer</code></td><td>Yes</td><td>No</td><td>No</td></tr>
+      </tbody>
+    </table></div>
+    <p><code>developer</code> exists because dictating <code>cargo test --locked</code> into a terminal should not gain a capital letter or a full stop. Filler removal is conservative: only tokens that are not also ordinary words, so “summary” and “ahead” survive while a standalone “um” does not.</p>
+    <p><b>Spoken corrections.</b> Saying “actually, change X to Y” makes Auralis backspace the text it just typed and replace it in place. Because this deletes characters in someone else’s window, it only applies to text Auralis itself typed, and the opportunity expires 45 seconds after insertion.</p>
+    </section>
+
+    <section class="s" id="system">
+    <h2>System architecture<a class="anchor" href="#system" aria-label="Link to this section">#</a></h2>
+    <div class="code"><button class="copy" type="button">Copy</button><pre><code>apps/desktop      Tauri 2 shell: hotkeys, tray, status overlay, settings,
+                  single-instance guard, JSON config, model download
+runtime/core      auralis-runtime (Rust library)
+                    audio · resample · quality · vad · denoise
+                    stt · text · pipeline
+                  bins: auralis-server (HTTP API), auralis-bench (CLI)
+benchmarks/       Python harness: dataset prep, runners, WER/CER/RTF metrics
+.github/          CI (tests, clippy) and tag-driven NSIS release</code></pre></div>
+    <p>The library/shell split keeps the engine independent of any one front end. The desktop app, the API server and the benchmark CLI are three callers of the same <code>Pipeline</code>.</p>
+    </section>
+
+    <section class="s" id="api">
+    <h2>Local API<a class="anchor" href="#api" aria-label="Link to this section">#</a></h2>
+    <p><code>auralis-server</code> loads one model and serves it over HTTP, by default on <code>127.0.0.1:8787</code>.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Request</th><th>Behaviour</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET /healthz</code></td><td>Returns status and the loaded model name.</td></tr>
+        <tr><td><code>POST /v1/transcriptions?cleanup=&lt;mode&gt;</code></td><td>Body is a WAV file (up to 50 MB). Returns <code>text</code>, <code>duration_s</code>, <code>processing_s</code> and <code>model</code>. An unknown cleanup mode returns 400; an oversized body returns 413.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="code"><button class="copy" type="button">Copy</button><pre><code>auralis-server --model base.en.bin
+curl -X POST "http://127.0.0.1:8787/v1/transcriptions?cleanup=clean" --data-binary @speech.wav</code></pre></div>
+    </section>
+
+    <section class="s" id="measure">
+    <h2>Measurement<a class="anchor" href="#measure" aria-label="Link to this section">#</a></h2>
+    <p>The benchmark harness compares model size (tiny, base, small) against preprocessing (raw audio versus VAD plus denoise) on a clean LibriSpeech slice and a synthetically noised copy. It reports word error rate, character error rate and real-time factor, and scores against normalised reference text so the cleanup rules do not distort the comparison. The guiding rule: a denoiser that makes audio sound better but transcription worse is a failed component.</p>
+    <div class="note"><p><b>Status.</b> The harness exists and its tests pass. It has not been run against a real corpus, so this paper publishes no accuracy or speed numbers. When results exist they will be added together with the exact commands that produced them.</p></div>
+    </section>
+
+    <section class="s" id="limits">
+    <h2>Limitations<a class="anchor" href="#limits" aria-label="Link to this section">#</a></h2>
+    <ul>
+      <li>Windows only. Insertion code sits behind a platform boundary, but no other backend exists.</li>
+      <li>English-focused default models. Multilingual models can be loaded but are untested here.</li>
+      <li>Text cleanup is rule-based. It does not understand meaning, so it will not fix a mis-heard word.</li>
+      <li>Some elevated or protected windows block simulated input; those fall back to the clipboard.</li>
+      <li>The release workflow and code signing have not been exercised end to end, and GPU builds need the CUDA or Vulkan toolkit. Windows SmartScreen may warn on unsigned installers.</li>
+      <li>The local API has no authentication and is intended for loopback use only.</li>
+    </ul>
+    </section>
+
+    <section class="s" id="roadmap">
+    <h2>Roadmap<a class="anchor" href="#roadmap" aria-label="Link to this section">#</a></h2>
+    <p>Not built, and not promised on a date: macOS and Linux insertion backends, context-aware vocabulary, additional languages, and run-and-publish benchmark results. The original product requirements describe a much larger system, including a custom-trained model family and a self-hosted compute fabric. Those are out of scope for this release and are not implied by anything above.</p>
+    </section>
+
+    <div class="cta-end rv"><p>Try it on your own machine.</p><a class="btn" href="index.html#download">Get Auralis</a></div>
+    <div class="pager"><a href="index.html">← Back to the site</a><a href="https://github.com/Sagexd08/Auralis">Read the source →</a></div>
+  </article>
+</div>
+
+<button id="top-btn" class="btn" type="button" aria-label="Back to top">↑ Top</button>
+<footer><span>auralis · MIT license</span><span><a href="index.html">Home</a> · <a href="https://github.com/Sagexd08/Auralis">GitHub</a> · <a href="https://github.com/Sagexd08/Auralis/blob/main/SECURITY.md">Security</a></span></footer>
+
+<script>
+(function () {
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, io = 'IntersectionObserver' in window;
+  var prog = document.getElementById('prog'), hdr = document.getElementById('hdr'), topBtn = document.getElementById('top-btn'), tick = false;
+  function onScroll() {
+    if (tick) return; tick = true;
+    requestAnimationFrame(function () {
+      var h = document.documentElement.scrollHeight - innerHeight;
+      prog.style.transform = 'scaleX(' + (h > 0 ? Math.min(1, scrollY / h) : 0) + ')';
+      hdr.classList.toggle('scrolled', scrollY > 10);
+      topBtn.classList.toggle('show', scrollY > 700);
+      tick = false;
+    });
+  }
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  topBtn.addEventListener('click', function () { scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); });
+
+  var words = document.getElementById('doc').innerText.split(/\s+/).length;
+  document.getElementById('read').textContent = 'Whitepaper · ' + Math.max(1, Math.round(words / 220)) + ' min read';
+
+  document.querySelectorAll('.rv, article section.s').forEach(function (el) {
+    if (!el.classList.contains('rv')) el.classList.add('rv');
+    if (!io) { el.classList.add('in'); return; }
+    var o = new IntersectionObserver(function (e) { if (e[0].isIntersecting) { el.classList.add('in'); o.disconnect(); } }, { threshold: 0.08 });
+    o.observe(el);
+  });
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('#toc a')), secs = links.map(function (a) { return document.querySelector(a.getAttribute('href')); });
+  if (io) {
+    var cur = null;
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) cur = e.target.id; });
+      if (!cur) return;
+      links.forEach(function (a) {
+        var on = a.getAttribute('href') === '#' + cur;
+        a.classList.toggle('active', on);
+        if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+        if (on && matchMedia('(max-width: 959px)').matches) a.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    secs.forEach(function (s) { if (s) spy.observe(s); });
+  }
+
+  document.querySelectorAll('.copy').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var txt = b.parentNode.querySelector('code').innerText;
+      (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () {
+        b.textContent = 'Copied'; b.classList.add('done');
+        setTimeout(function () { b.textContent = 'Copy'; b.classList.remove('done'); }, 1600);
+      }).catch(function () { b.textContent = 'Press Ctrl+C'; });
+    });
+  });
+
+  if (location.search.indexOf('print=1') > -1) addEventListener('load', function () { setTimeout(function () { print(); }, 400); });
+})();
+</script>
+</body>
+</html>

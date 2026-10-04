@@ -1,6 +1,6 @@
 # apps/web
 
-The public Auralis site: a single self-contained `index.html` with no build step
+The public Auralis site: two self-contained pages (`index.html` and `whitepaper.html`) with no build step
 and no dependencies.
 
 ```bash

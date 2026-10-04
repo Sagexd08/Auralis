@@ -15,3 +15,4 @@ benchmarks/reports/*.md
 .cargo/config.toml
 .vercel/
 .impeccable/
+.agents/
