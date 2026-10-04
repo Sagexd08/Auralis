@@ -4,6 +4,7 @@
 
 ## Pages
 - [Home](https://auralis-speak.vercel.app/): what Auralis does, the pipeline, download
+- [Playground](https://auralis-speak.vercel.app/playground.html): live dictation in the browser against the Auralis server on your own machine
 - [Whitepaper](https://auralis-speak.vercel.app/whitepaper.html): privacy model, pipeline stages, text cleanup rules, local API, measurement and limitations
 
 ## Facts
