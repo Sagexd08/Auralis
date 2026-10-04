@@ -64,7 +64,7 @@ fn installed_files(app: &AppHandle) -> Vec<String> {
         .filter_map(|dir| fs::read_dir(dir).ok())
         .flat_map(|entries| entries.flatten())
         .filter_map(|e| e.file_name().into_string().ok())
-        .filter(|name| name.ends_with(".bin"))
+        .filter(|name| name.ends_with(".bin") || name.ends_with(".onnx"))
         .collect();
     names.sort();
     names.dedup();

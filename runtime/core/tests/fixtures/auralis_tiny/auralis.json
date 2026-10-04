@@ -1,0 +1,11 @@
+{
+  "name": "auralis",
+  "languages": [
+    "en"
+  ],
+  "n_mels": 80,
+  "parameters": 150656,
+  "vocab_size": 16,
+  "verified_max_abs_diff": 3.814697265625e-06,
+  "source_checkpoint": "auralis-stt-step-260"
+}

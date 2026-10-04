@@ -1,4 +1,4 @@
-use crate::{audio::AudioCapture, denoise, quality, resample, stt::SttEngine, text, vad};
+use crate::{audio::AudioCapture, denoise, quality, resample, stt::{join_segments, load_engine, Speech}, text, vad};
 use crate::text::{CleanupMode, CleanupModeHandle};
 use crate::personalize::PersonalizationHandle;
 use anyhow::Result;
@@ -19,7 +19,7 @@ pub enum Transcript {
 }
 
 pub struct Pipeline {
-    stt: SttEngine,
+    stt: Box<dyn Speech>,
     last_transcript: Option<String>,
     last_transcript_at: Option<Instant>,
     cleanup_mode: CleanupModeHandle,
@@ -41,7 +41,7 @@ impl Pipeline {
         personalization: PersonalizationHandle,
     ) -> Result<Self> {
         Ok(Self {
-            stt: SttEngine::load(model_path)?,
+            stt: load_engine(model_path)?,
             last_transcript: None,
             last_transcript_at: None,
             cleanup_mode,
@@ -163,7 +163,7 @@ impl Pipeline {
         debug!("resampled to 16k for STT: {} samples ({:.2}s)", at_16k.len(), at_16k.len() as f32 / 16_000.0);
 
         let stt_start = Instant::now();
-        let raw_text = self.stt.transcribe(&at_16k)?;
+        let raw_text = join_segments(&self.stt.segments(&at_16k, None)?);
         debug!("STT took {:.2}s, raw output: {raw_text:?}", stt_start.elapsed().as_secs_f32());
 
         let mode = self.cleanup_mode.get();

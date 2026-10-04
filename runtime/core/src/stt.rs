@@ -17,6 +17,14 @@ pub trait Speech: Send + Sync {
     fn engine_name(&self) -> &'static str;
 }
 
+pub fn load_engine(model_path: &Path) -> Result<Box<dyn Speech>> {
+    let ext = model_path.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
+    match ext.as_str() {
+        "onnx" => Ok(Box::new(crate::auralis::AuralisEngine::load(model_path)?)),
+        _ => Ok(Box::new(SttEngine::load(model_path)?)),
+    }
+}
+
 pub fn join_segments(segments: &[Segment]) -> String {
     segments.iter().map(|s| s.text.as_str()).collect::<String>().trim().to_string()
 }
