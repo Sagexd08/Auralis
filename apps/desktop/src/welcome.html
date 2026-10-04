@@ -132,7 +132,7 @@
     <main>
       <section class="step" data-step="0" aria-labelledby="h0">
         <h1 id="h0">Getting Auralis ready.</h1>
-        <p class="lead">Auralis turns speech into text on this PC. It needs a speech model first. It downloads once and stays here.</p>
+        <p class="lead">Auralis turns speech into text on this PC. It needs a speech model file in its models folder.</p>
         <div class="card">
           <div id="model-line"><span id="model-dot"></span><span id="model-text">Starting…</span></div>
           <div id="bar" class="indeterminate"><i></i></div>
@@ -273,10 +273,8 @@
         pill.querySelector("span").textContent = text === "Idle" ? "Ready" : text;
         if (/^Model unavailable/.test(text)) {
           modelDot.className = "err";
-          modelText.textContent = "The model couldn’t be prepared. Check your internet connection and restart Auralis.";
+          modelText.textContent = "No speech model was found. Put a model .bin file in the Auralis models folder and restart.";
           bar.style.display = "none";
-        } else if (/^Downloading/.test(text)) {
-          modelText.textContent = text.replace("Downloading model", "Downloading the speech model");
         } else if (/^Loading/.test(text)) {
           modelText.textContent = "Loading the model…";
           bar.className = "indeterminate";
@@ -296,14 +294,6 @@
       listen("auralis://status", (event) => {
         applyStatus(event.payload);
         if (event.payload === "Idle" && !ready) poll();
-      });
-
-      listen("auralis://model-progress", (event) => {
-        const { downloaded, total } = event.payload;
-        if (total) {
-          bar.className = "";
-          bar.firstElementChild.style.width = Math.round((downloaded * 100) / total) + "%";
-        }
       });
 
       async function poll() {

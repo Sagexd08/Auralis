@@ -7,7 +7,7 @@ Auralis is open source under the [MIT license](LICENSE). Contributions of every 
 | Path | What it is |
 | --- | --- |
 | `runtime/core/` | `auralis-runtime`: capture, VAD, denoise, STT, text cleanup, pipeline. Also the `auralis-server` HTTP API and `auralis-bench-cli`. |
-| `apps/desktop/` | Tauri 2 tray app: hotkeys, keystroke injection, settings, model downloads. |
+| `apps/desktop/` | Tauri 2 tray app: hotkeys, keystroke injection, settings. |
 | `apps/web/` | The static landing page. No build step. |
 | `benchmarks/` | Python WER/CER/RTF harness. |
 
@@ -16,7 +16,7 @@ Auralis is open source under the [MIT license](LICENSE). Contributions of every 
 You need Rust (stable, `x86_64-pc-windows-msvc` on Windows), Node.js 20+, CMake, and a `libclang` that works with bindgen 0.69. See the "libclang note" in the [README](README.md#building) if `whisper-rs-sys` fails to build.
 
 ```powershell
-powershell -File models/pull-model.ps1
+# put a ggml model file in models/ first
 cargo test -p auralis-runtime -p auralis-desktop
 cd apps/desktop
 npm install

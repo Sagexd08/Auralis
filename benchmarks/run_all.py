@@ -73,7 +73,7 @@ def main() -> None:
         rows = []
         for model_name, model_path in MODELS.items():
             if not model_path.exists():
-                print(f"skipping {model_name}: not found at {model_path} (run models/pull-model.ps1 or download it)")
+                print(f"skipping {model_name}: not found at {model_path} (place a ggml model file there)")
                 continue
             for preprocess in PREPROCESS_VARIANTS:
                 for dataset_name, dataset_dir in datasets.items():
