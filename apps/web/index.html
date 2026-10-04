@@ -3,12 +3,44 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Auralis — Speak naturally. Type nothing.</title>
-<meta name="description" content="Real-time push-to-talk dictation that turns your voice into clean text, wherever you work. Open source, runs on your PC." />
+<title>Auralis — Push-to-talk voice dictation for Windows, on-device</title>
+<meta name="description" content="Open-source push-to-talk dictation for Windows. Hold Ctrl+Space, speak, release, and clean text is typed into any app. Runs on your PC with whisper.cpp. No cloud, no telemetry." />
+<link rel="canonical" href="https://auralis-speak.vercel.app/" />
+<meta name="robots" content="index, follow, max-image-preview:large" />
+<meta name="theme-color" content="#0d0b09" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Auralis" />
+<meta property="og:title" content="Auralis — Speak naturally. Type nothing." />
+<meta property="og:description" content="Hold Ctrl+Space, speak, release. Clean text is typed into whatever app has focus, transcribed on your own PC." />
+<meta property="og:url" content="https://auralis-speak.vercel.app/" />
+<meta property="og:image" content="https://auralis-speak.vercel.app/og-image.jpg" />
+<meta property="og:image:type" content="image/jpeg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="675" />
+<meta property="og:image:alt" content="Auralis: Speak naturally. Type nothing. A push-to-talk key and a live transcription card reading 'I need to send the proposal to the client before Friday...'" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Auralis — Speak naturally. Type nothing." />
+<meta name="twitter:description" content="Open-source, on-device push-to-talk dictation for Windows." />
+<meta name="twitter:image" content="https://auralis-speak.vercel.app/og-image.jpg" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+{"@type":"SoftwareApplication","name":"Auralis","applicationCategory":"UtilitiesApplication","operatingSystem":"Windows","description":"Open-source, on-device push-to-talk dictation for Windows. Hold Ctrl+Space, speak, release; cleaned-up text is typed into the focused app.","url":"https://auralis-speak.vercel.app/","image":"https://auralis-speak.vercel.app/og-image.jpg","license":"https://opensource.org/licenses/MIT","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/Sagexd08/Auralis/releases","codeRepository":"https://github.com/Sagexd08/Auralis"},
+{"@type":"WebSite","name":"Auralis","url":"https://auralis-speak.vercel.app/"},
+{"@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What is Auralis?","acceptedAnswer":{"@type":"Answer","text":"Auralis is open-source, push-to-talk dictation for Windows. You hold Ctrl+Space, speak, and release, and cleaned-up text is typed into whatever app has focus."}},
+{"@type":"Question","name":"Does Auralis send my voice to the cloud?","acceptedAnswer":{"@type":"Answer","text":"No. Speech recognition runs on your own PC using whisper.cpp. There is no cloud speech-to-text, no cloud text cleanup and no telemetry."}},
+{"@type":"Question","name":"What is the Auralis keyboard shortcut?","acceptedAnswer":{"@type":"Answer","text":"Hold Ctrl+Space to talk and release to insert the text. Press Ctrl+Shift+Space for hands-free continuous dictation."}},
+{"@type":"Question","name":"Which apps does Auralis work in?","acceptedAnswer":{"@type":"Answer","text":"Any Windows app with a text field. Auralis types into the focused window and falls back to the clipboard if that window blocks input."}},
+{"@type":"Question","name":"Is Auralis free?","acceptedAnswer":{"@type":"Answer","text":"Yes. Auralis is free and open source under the MIT license."}},
+{"@type":"Question","name":"How big is the speech model?","acceptedAnswer":{"@type":"Answer","text":"The default model, base.en, is about 59 MB and downloads once on first launch. The optional small.en model is about 190 MB and is more accurate on proper nouns and accents."}}
+]}]}
+</script>
+<meta name="color-scheme" content="dark" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
-<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="tailwind.css" />
 <style>
   :root {
     --auralis-black: #010101;
@@ -89,7 +121,7 @@
 <div id="prog" aria-hidden="true" class="fixed left-0 top-0 z-[60] h-0.5 w-full scale-x-0 bg-[#e3ad5f]"></div>
 <section class="relative h-screen w-full overflow-hidden">
   <video
-    src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260803_192301_9231ed6b-c55c-4a48-909c-4ebe11cf2e11.mp4"
+    src="hero.mp4" poster="hero-poster.jpg"
     autoplay loop muted playsinline aria-hidden="true"
     class="absolute inset-0 h-full w-full object-cover"></video>
 
@@ -313,6 +345,20 @@
         </ul>
       </div>
     </a>
+  </div>
+</section>
+
+<section id="faq" class="border-t border-white/10">
+  <div class="mx-auto max-w-4xl px-5 py-24 sm:px-8 lg:px-12 lg:py-32">
+    <h2 class="text-4xl font-semibold leading-[1.05] tracking-tighter sm:text-5xl">Questions</h2>
+    <dl class="mt-12 divide-y divide-white/10 border-y border-white/10">
+      <div class="py-6"><dt class="text-lg font-semibold tracking-tight">What is Auralis?</dt><dd class="mt-2 max-w-[62ch] text-sm leading-relaxed text-white/70">Open-source, push-to-talk dictation for Windows. You hold Ctrl+Space, speak, and release, and cleaned-up text is typed into whatever app has focus.</dd></div>
+      <div class="py-6"><dt class="text-lg font-semibold tracking-tight">Does Auralis send my voice to the cloud?</dt><dd class="mt-2 max-w-[62ch] text-sm leading-relaxed text-white/70">No. Speech recognition runs on your own PC using whisper.cpp. There is no cloud speech-to-text, no cloud text cleanup and no telemetry.</dd></div>
+      <div class="py-6"><dt class="text-lg font-semibold tracking-tight">What is the keyboard shortcut?</dt><dd class="mt-2 max-w-[62ch] text-sm leading-relaxed text-white/70">Hold Ctrl+Space to talk and release to insert the text. Press Ctrl+Shift+Space for hands-free continuous dictation.</dd></div>
+      <div class="py-6"><dt class="text-lg font-semibold tracking-tight">Which apps does it work in?</dt><dd class="mt-2 max-w-[62ch] text-sm leading-relaxed text-white/70">Any Windows app with a text field. Auralis types into the focused window and falls back to the clipboard if that window blocks input.</dd></div>
+      <div class="py-6"><dt class="text-lg font-semibold tracking-tight">Is Auralis free?</dt><dd class="mt-2 max-w-[62ch] text-sm leading-relaxed text-white/70">Yes. It is free and open source under the MIT license.</dd></div>
+      <div class="py-6"><dt class="text-lg font-semibold tracking-tight">How big is the speech model?</dt><dd class="mt-2 max-w-[62ch] text-sm leading-relaxed text-white/70">The default model, base.en, is about 59 MB and downloads once on first launch. The optional small.en model is about 190 MB and is more accurate on proper nouns and accents.</dd></div>
+    </dl>
   </div>
 </section>
 
