@@ -2,22 +2,20 @@ from __future__ import annotations
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 
-
 class LicenseState(str, Enum):
     UNKNOWN = "UNKNOWN"
     REJECTED = "REJECTED"
     NONCOMMERCIAL_ONLY = "NONCOMMERCIAL_ONLY"
-    TRAINING_ONLY = "TRAINING_ONLY"          # may train on it, may not redistribute
+    TRAINING_ONLY = "TRAINING_ONLY"
     REDISTRIBUTABLE = "REDISTRIBUTABLE"
-    ELIGIBLE = "ELIGIBLE"                    # training and commercial use both cleared
-
+    ELIGIBLE = "ELIGIBLE"
 
 @dataclass
 class DatasetRecord:
     dataset_id: str
-    source: str                              # e.g. "huggingface", "common-voice", "openslr", "local"
+    source: str
     revision: str
-    license: str                             # licence name/URL as published by the source
+    license: str
     state: LicenseState = LicenseState.UNKNOWN
     training_allowed: bool = False
     commercial_allowed: bool = False
@@ -38,7 +36,6 @@ class DatasetRecord:
         d = dict(d)
         d["state"] = LicenseState(d.get("state", "UNKNOWN"))
         return DatasetRecord(**d)
-
 
 @dataclass
 class SampleRecord:

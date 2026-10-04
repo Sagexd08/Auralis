@@ -1,7 +1,3 @@
-"""Auralis audio frontend (M0): WAV -> log-mel, written from first principles in numpy.
-
-Numeric tolerances against the reference implementations are stated in tests/test_frontend.py.
-"""
 from .wav import read_wav
 from .resample import resample
 from .windows import get_window

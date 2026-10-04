@@ -2,13 +2,10 @@ import numpy as np
 from .dft import fft
 from .windows import get_window
 
-
 def frame_count(n_samples, hop, center=True):
     return 1 + n_samples // hop if center else 1 + (n_samples - 1) // hop
 
-
 def stft(x, n_fft=512, win_length=400, hop=160, window="hann", center=True):
-    """One-sided STFT, shape (n_fft // 2 + 1, frames). Matches torch.stft(center=True, pad_mode='reflect')."""
     x = np.asarray(x, dtype=np.float64)
     w = np.zeros(n_fft)
     off = (n_fft - win_length) // 2

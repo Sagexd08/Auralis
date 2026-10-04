@@ -1,7 +1,3 @@
-"""Runs `auralis-bench-cli` across every clip in a dataset for one
-(model, preprocessing) variant, collecting hypotheses, wall-clock time, and
-audio duration — the raw inputs `metrics/wer.py` needs to compute WER/CER/RTF.
-"""
 import json
 import subprocess
 import time

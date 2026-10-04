@@ -44,8 +44,6 @@ jobs:
       - name: Fetch the third-party Whisper base.en model (installer only)
         shell: pwsh
         run: |
-          # Whisper (MIT, OpenAI) is fetched from its upstream at build time and checksum-pinned.
-          # It is bundled into the installer only and is never published as an Auralis model.
           New-Item -ItemType Directory -Force models/bundled | Out-Null
           $dest = "models/bundled/ggml-base.en-q5_1.bin"
           Invoke-WebRequest -Uri "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en-q5_1.bin" -OutFile $dest
@@ -80,8 +78,14 @@ jobs:
         working-directory: apps/desktop
         shell: pwsh
         run: |
-          if ($env:SIGN_CONFIG) { npx tauri build --bundles nsis --config $env:SIGN_CONFIG }
-          else { npx tauri build --bundles nsis }
+          $cfg = @{ bundle = @{ resources = @{ "../../../models/bundled/*.bin" = "models/" } } }
+          if ($env:SIGN_CONFIG) {
+            $sign = Get-Content $env:SIGN_CONFIG -Raw | ConvertFrom-Json
+            $cfg.bundle.windows = $sign.bundle.windows
+          }
+          $merged = Join-Path $env:RUNNER_TEMP "tauri-build.json"
+          $cfg | ConvertTo-Json -Depth 8 | Set-Content -Path $merged
+          npx tauri build --bundles nsis --config $merged
 
       - name: Verify installer and write SHA-256 checksums
         shell: pwsh

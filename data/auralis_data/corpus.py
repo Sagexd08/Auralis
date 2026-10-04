@@ -1,4 +1,3 @@
-"""Deterministic corpus build: registry + sample manifests + config -> sorted manifest with a content hash."""
 from __future__ import annotations
 import hashlib
 import json
@@ -9,11 +8,10 @@ from .gate import check_dataset
 from .provenance import SampleRecord
 from .registry import Registry
 
-
 @dataclass
 class CorpusConfig:
     name: str
-    datasets: list[str]                              # dataset ids; each has a <id>.jsonl sample manifest
+    datasets: list[str]
     commercial: bool = False
     min_duration: float = 0.5
     max_duration: float = 30.0
@@ -21,16 +19,13 @@ class CorpusConfig:
     language_weights: dict[str, float] = field(default_factory=dict)
     seed: int = 0
 
-
 class LicenceGateError(RuntimeError):
     pass
-
 
 def _load(manifest_dir: Path, dataset_id: str):
     for line in (manifest_dir / f"{dataset_id}.jsonl").read_text(encoding="utf-8").splitlines():
         if line.strip():
             yield SampleRecord(**json.loads(line))
-
 
 def build_corpus(cfg: CorpusConfig, registry: Registry, manifest_dir, out_dir):
     manifest_dir, out_dir = Path(manifest_dir), Path(out_dir)
@@ -44,13 +39,13 @@ def build_corpus(cfg: CorpusConfig, registry: Registry, manifest_dir, out_dir):
             if not (cfg.min_duration <= s.duration <= cfg.max_duration) or s.quality < cfg.min_quality:
                 continue
             key = (s.language, " ".join(s.transcript.lower().split()))
-            if key in seen:                                   # exact transcript duplicate
+            if key in seen:
                 continue
             seen.add(key)
             kept.append(s)
     kept.sort(key=lambda s: (s.dataset_id, s.sample_id))
 
-    if cfg.language_weights:                                  # cap each language to its weighted share
+    if cfg.language_weights:
         rng = random.Random(cfg.seed)
         by_lang: dict[str, list] = {}
         for s in kept:
