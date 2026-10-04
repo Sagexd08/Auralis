@@ -1,0 +1,65 @@
+# Two transcription nodes behind one router, with optional Prometheus and Grafana.
+#
+#   docker compose up --build                       nodes + router
+#   docker compose --profile observability up       also Prometheus and Grafana
+#
+# Put a model in ./models first (models/pull-model.ps1, or see docs/INFRA.md).
+# Only the router, Prometheus and Grafana are published, and only on localhost.
+
+x-node: &node
+  build:
+    context: .
+    dockerfile: infra/docker/Dockerfile
+    target: server
+  volumes:
+    - ./models:/models:ro
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8787 && printf 'GET /healthz HTTP/1.0\r\n\r\n' >&3 && grep -q ok <&3"]
+    interval: 10s
+    timeout: 3s
+    retries: 5
+
+services:
+  node-a:
+    <<: *node
+  node-b:
+    <<: *node
+
+  router:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      target: router
+    command: ["--node", "http://node-a:8787", "--node", "http://node-b:8787"]
+    depends_on:
+      node-a: { condition: service_healthy }
+      node-b: { condition: service_healthy }
+    ports:
+      - "127.0.0.1:8780:8780"
+    restart: unless-stopped
+
+  prometheus:
+    profiles: [observability]
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    profiles: [observability]
+    image: grafana/grafana:11.3.0
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      # Taken from your shell; export it before `docker compose up` (see docs/INFRA.md).
+      - GF_SECURITY_ADMIN_PASSWORD
+    volumes:
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on: [prometheus]
+    restart: unless-stopped

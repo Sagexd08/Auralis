@@ -239,7 +239,9 @@
 runtime/core      auralis-runtime (Rust library)
                     audio · resample · quality · vad · denoise
                     stt · text · pipeline
-                  bins: auralis-server (HTTP API), auralis-bench (CLI)
+                  bins: auralis-server (HTTP API), auralis-router (multi-node
+                  gateway), auralis-bench-cli
+infra/            Dockerfile, Compose, Prometheus and Grafana config
 benchmarks/       Python harness: dataset prep, runners, WER/CER/RTF metrics
 .github/          CI (tests, clippy) and tag-driven NSIS release</code></pre></div>
     <p>The library/shell split keeps the engine independent of any one front end. The desktop app, the API server and the benchmark CLI are three callers of the same <code>Pipeline</code>.</p>
