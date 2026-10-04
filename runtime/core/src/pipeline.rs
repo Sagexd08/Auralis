@@ -1,5 +1,6 @@
 use crate::{audio::AudioCapture, denoise, quality, resample, stt::SttEngine, text, vad};
 use crate::text::{CleanupMode, CleanupModeHandle};
+use crate::personalize::PersonalizationHandle;
 use anyhow::Result;
 use log::{debug, warn};
 use std::path::Path;
@@ -22,6 +23,7 @@ pub struct Pipeline {
     last_transcript: Option<String>,
     last_transcript_at: Option<Instant>,
     cleanup_mode: CleanupModeHandle,
+    personalization: PersonalizationHandle,
 }
 
 impl Pipeline {
@@ -30,11 +32,20 @@ impl Pipeline {
     }
 
     pub fn with_cleanup_mode(model_path: &Path, cleanup_mode: CleanupModeHandle) -> Result<Self> {
+        Self::with_options(model_path, cleanup_mode, PersonalizationHandle::default())
+    }
+
+    pub fn with_options(
+        model_path: &Path,
+        cleanup_mode: CleanupModeHandle,
+        personalization: PersonalizationHandle,
+    ) -> Result<Self> {
         Ok(Self {
             stt: SttEngine::load(model_path)?,
             last_transcript: None,
             last_transcript_at: None,
             cleanup_mode,
+            personalization,
         })
     }
 
@@ -155,7 +166,12 @@ impl Pipeline {
         let raw_text = self.stt.transcribe(&at_16k)?;
         debug!("STT took {:.2}s, raw output: {raw_text:?}", stt_start.elapsed().as_secs_f32());
 
-        let cleaned = text::clean_transcript_with(&raw_text, self.cleanup_mode.get());
+        let mode = self.cleanup_mode.get();
+        let personalization = self.personalization.get();
+        let cleaned = match personalization.snippet_for(&raw_text).filter(|_| mode != CleanupMode::Raw) {
+            Some(snippet) => snippet,
+            None => personalization.finish(&text::clean_transcript_with(&raw_text, mode), mode),
+        };
         if cleaned.is_empty() {
             return Ok(Transcript::Empty);
         }

@@ -1,3 +1,4 @@
+use auralis_runtime::personalize::Personalization;
 use auralis_runtime::text::CleanupMode;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -11,11 +12,19 @@ pub struct AppConfig {
     pub model_file: String,
     pub mic_device: Option<String>,
     pub cleanup_mode: String,
+    pub dictionary: String,
+    pub snippets: String,
+    #[serde(default = "spoken_commands_on")]
+    pub spoken_commands: bool,
     #[serde(default = "existing_install_is_onboarded")]
     pub onboarded: bool,
 }
 
 fn existing_install_is_onboarded() -> bool {
+    true
+}
+
+fn spoken_commands_on() -> bool {
     true
 }
 
@@ -27,6 +36,9 @@ impl Default for AppConfig {
             model_file: "ggml-base.en-q5_1.bin".to_string(),
             mic_device: None,
             cleanup_mode: CleanupMode::default().as_str().to_string(),
+            dictionary: String::new(),
+            snippets: String::new(),
+            spoken_commands: true,
             onboarded: false,
         }
     }
@@ -43,6 +55,10 @@ impl AppConfig {
             Ok(contents) => serde_json::from_str(&contents).unwrap_or_default(),
             Err(_) => Self::default(),
         }
+    }
+
+    pub fn personalization(&self) -> Personalization {
+        Personalization::from_settings(&self.dictionary, &self.snippets, self.spoken_commands)
     }
 
     pub fn cleanup_mode(&self) -> CleanupMode {
@@ -73,6 +89,25 @@ mod tests {
         assert!(!AppConfig::default().onboarded);
         let old: AppConfig = serde_json::from_str(r#"{"push_to_talk_hotkey":"Ctrl+Space"}"#).unwrap();
         assert!(old.onboarded, "configs saved before the welcome screen existed must not show it");
+    }
+
+    #[test]
+    fn old_configs_get_spoken_commands_on_and_empty_lists() {
+        let old: AppConfig = serde_json::from_str(r#"{"cleanup_mode":"clean"}"#).unwrap();
+        assert!(old.spoken_commands);
+        assert!(old.personalization().dictionary.is_empty());
+    }
+
+    #[test]
+    fn personalization_is_built_from_settings_text() {
+        let mut config = AppConfig::default();
+        config.dictionary = "post gres = PostgreSQL".to_string();
+        config.snippets = "my link = https://example.com".to_string();
+        config.spoken_commands = false;
+        let p = config.personalization();
+        assert_eq!(p.dictionary.len(), 1);
+        assert_eq!(p.snippets.len(), 1);
+        assert!(!p.spoken_commands);
     }
 
     #[test]
