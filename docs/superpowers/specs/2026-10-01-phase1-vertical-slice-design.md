@@ -2,7 +2,6 @@
 
 Status: Approved
 Date: 2026-10-01
-Source PRD: `auralis_prd_end_to_end.md` (repo root)
 
 ## Purpose
 
@@ -70,7 +69,6 @@ C:\Desktop\Auralis\
 ├── docs/
 │   ├── ROADMAP.md                 # full §37 target monorepo layout + phase plan
 │   └── superpowers/specs/         # this file
-├── auralis_prd_end_to_end.md      # original PRD (already present)
 ├── Cargo.toml                     # Rust workspace (members: apps/desktop/src-tauri, runtime/core)
 ├── README.md
 └── .gitignore

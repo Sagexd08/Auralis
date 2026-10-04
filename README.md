@@ -75,8 +75,7 @@ with cross-utterance context is prone to.
 This is the Phase 1 vertical slice described in
 [`docs/superpowers/specs/2026-10-01-phase1-vertical-slice-design.md`](docs/superpowers/specs/2026-10-01-phase1-vertical-slice-design.md):
 a real, daily-usable dictation tool built on an existing open STT model, not a
-custom-trained model or the full distributed system described in the PRD
-(`auralis_prd_end_to_end.md`).
+custom-trained model or a full distributed system.
 
 ## Repo layout
 
@@ -193,7 +192,7 @@ it does — WER/CER/RTF across model size x raw/vad-denoise x clean/noisy. See
 
 ## Still out of scope
 
-The PRD (`auralis_prd_end_to_end.md`) describes a far larger system. Per its own
+The original product plan describes a far larger system. Per its own
 §53, the model and the dictation loop come before the infrastructure, so none of
 the following is built yet:
 
