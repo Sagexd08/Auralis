@@ -176,8 +176,10 @@ fn serves_the_auralis_onnx_model_through_the_same_endpoints() {
 
     let raw: Vec<f32> = std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/auralis_tiny/sample.f32"))
         .unwrap()
-        .chunks_exact(4)
-        .map(|b| f32::from_le_bytes(b.try_into().unwrap()))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|b| f32::from_le_bytes(*b))
         .collect();
     let mut wav = Vec::new();
     {

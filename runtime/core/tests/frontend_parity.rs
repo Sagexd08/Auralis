@@ -8,7 +8,7 @@ const MEAN_ABS_TOL: f64 = 1e-11;
 fn rust_log_mel_matches_python_reference() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/logmel_parity.f64");
     let bytes = std::fs::read(&path).expect("fixture missing; run training/scripts/gen_parity_fixture.py");
-    let vals: Vec<f64> = bytes.chunks_exact(8).map(|b| f64::from_le_bytes(b.try_into().unwrap())).collect();
+    let vals: Vec<f64> = bytes.as_chunks::<8>().0.iter().map(|b| f64::from_le_bytes(*b)).collect();
     let (signal, expected) = vals.split_at(16_000);
     assert_eq!(expected.len(), 80 * 101);
 
