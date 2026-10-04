@@ -1,0 +1,6 @@
+numpy
+scipy
+pytest
+torch
+librosa
+matplotlib
