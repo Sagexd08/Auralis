@@ -11,6 +11,7 @@ The plan below is the path to replacing it. It is ordered so each milestone is u
 ## Ground rules
 
 - **From scratch means random initialisation**: own tokenizer, own frontend, own encoder/decoder, own training loop. Whisper, Parakeet and Canary are benchmark references, not starting weights.
+- **No third-party weights in Auralis model releases.** Whisper is MIT-licensed, but it stays out of anything published as an Auralis model (including the `models-v1` release). It lives beside the foundry as a baseline that competes with Auralis; Auralis does not depend on it.
 - **Licence gate before data**: no dataset enters training without a recorded licence and training-use status. Unknown means rejected.
 - **Scoped claims only**: results are stated as "WER X on dataset Y at configuration Z", never as universal superiority.
 - **Hardware reality**: the development machine (RTX 3050, 6 GB VRAM, 24 GB RAM) can train and debug tiny/small models and run inference. Base- and Large-class training needs rented or borrowed GPUs; the code must not assume otherwise.
@@ -19,6 +20,14 @@ The plan below is the path to replacing it. It is ordered so each milestone is u
 ## Repository layout (new)
 
 ```
+models/
+  auralis/            published Auralis models only
+    auralis-tiny/
+    auralis-small/
+    auralis-base/
+benchmarks/
+  baselines/
+    whisper/          adapter.py, config.yaml, README.md; weights fetched at evaluation time, never committed
 training/
   audio_frontend/   reference DSP: wav, resample, frames, windows, dft, stft, mel, log_mel
   tokenizer/        BPE/Unigram training + tests
@@ -31,6 +40,16 @@ data/
 benchmarks/         existing harness; add Auralis model adapter
 ```
 
+The foundry is one directed graph, and no pretrained checkpoint enters it:
+
+```
+data sources -> Data Factory -> corpus version -> tokenizer -> Auralis frontend
+  -> Auralis model -> training -> evaluation -> hard-example mining -> next run
+  -> model registry -> Hugging Face
+```
+
+Whisper sits beside the graph. The benchmark runs the same held-out data through the same preprocessing contract for Auralis and Whisper and reports WER, CER, latency, RTF, VRAM and per-language score.
+
 Python for research, Rust for the shipped runtime. A research component is only ported to Rust after its numbers are fixed.
 
 ## M0: Audio frontend (about 2 weeks)
@@ -40,7 +59,7 @@ Build `training/audio_frontend` by hand: WAV read, resample, framing, Hann/Hammi
 - **Tests**: compare numerically with `torch.stft` and `librosa.feature.melspectrogram` on fixed fixtures (tolerance recorded); property tests for Nyquist, window sums, filter-bank coverage; silence, clipping and 8/16/48 kHz inputs.
 - **Output**: `WAV -> 80-band log-mel` at 25 ms window, 10 ms hop, 16 kHz, with a plot script.
 - **Port**: after the numbers match, port to `runtime/core` and add a Rust-vs-Python parity test.
-- **Exit**: parity within the recorded tolerance; the frontend runs faster than real time on CPU.
+- **Exit**: Rust output matches the Python reference to a documented numeric tolerance (stated per stage, enforced in CI), not just a spectrogram that looks similar; the frontend runs faster than real time on CPU.
 
 ## M1: Data and licence tooling (about 3 weeks, parallel with M0)
 
@@ -60,7 +79,7 @@ Build `data/` so every later training run is reproducible and defensible.
 `log-mel -> conv subsampling -> small Transformer/Conformer encoder -> CTC`, with an Auralis-trained tokenizer.
 
 - **Step 1 (pipeline proof)**: train on LibriSpeech clean-100 only. Goal is not quality, it is proving loss decreases, greedy CTC decoding works and WER is computed correctly (implement WER by dynamic programming and cross-check).
-- **Step 2 (launch languages)**: add FLEURS and Common Voice hi/bn/ja/en; shared multilingual tokenizer with language tokens.
+- **Step 2 (launch languages)**: expand English, Hindi, Bengali and Japanese with FLEURS and Common Voice; shared multilingual tokenizer with language tokens.
 - **Constraints**: model sized for the 6 GB GPU (mixed precision, gradient checkpointing); every run records git commit, seed, dataset revisions and config.
 - **Exit**: reproducible WER/CER per language on held-out FLEURS and Common Voice test sets, and a documented comparison against Whisper base on the same sets. A weak result is acceptable; an unmeasured one is not.
 
@@ -73,7 +92,7 @@ Streaming (causal/chunked encoder, partial stability), Conformer upgrade, denois
 1. **Compute**: where do larger runs happen (rented GPUs, a university cluster, friends' machines)? Budget and a rough hour count.
 2. **Data you own**: is there recorded Hindi/Bengali/Japanese speech with consent that can be added?
 3. **Commercial intent**: if Auralis may ship commercially, `NONCOMMERCIAL_ONLY` datasets are excluded from the default corpus.
-4. **Interim model**: keep Whisper base.en in the installer until an Auralis model beats it on the agreed sets, then swap.
+4. **Installer model**: Whisper is not published as an Auralis model, so the installer cannot rely on a `models-v1` release containing it. Until an Auralis model exists, either the installer ships without a model (the user supplies their own) or it bundles a model you explicitly choose. PR #11 and the release workflow need to follow this decision.
 
 ## Risks
 
