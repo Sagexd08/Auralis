@@ -60,7 +60,7 @@ The single biggest lever is model size. `base.en` (~59 MB) is the fast default;
 `small.en` (~190 MB) is noticeably better on proper nouns and accented speech at
 roughly 3x the decode cost:
 
-Auralis never downloads models. Put your own ggml `.bin` file in the per-user app data
+The installer ships with a base model. Auralis never downloads models: add more ggml `.bin` files to the per-user app data
 `models` folder (the repo's `models/` folder is also searched in dev builds). Any model
 there appears in the **Active model** picker. Decoding
 uses beam search (width 5) with whisper.cpp's temperature-fallback thresholds and
@@ -160,7 +160,7 @@ npm run tauri dev
 
 ## Download
 
-Grab the Windows installer from the [Releases page](https://github.com/Sagexd08/Auralis/releases/latest) or the project website. Add a speech model file to the models folder before first use.
+Grab the Windows installer from the [Releases page](https://github.com/Sagexd08/Auralis/releases/latest) or the project website. The installer includes the base.en speech model.
 
 ## Local API
 

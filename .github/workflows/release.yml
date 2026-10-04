@@ -41,6 +41,15 @@ jobs:
           $native = python -c "import clang, os; print(os.path.join(os.path.dirname(clang.__file__), 'native'))"
           "LIBCLANG_PATH=$native" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
+      - name: Fetch the bundled speech model
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory -Force models | Out-Null
+          gh release download models-v1 --pattern "ggml-base.en-q5_1.bin" --dir models
+          if ((Get-Item models/ggml-base.en-q5_1.bin).Length -lt 10MB) { throw "model download is too small" }
+
       - name: npm ci
         working-directory: apps/desktop
         run: npm ci
