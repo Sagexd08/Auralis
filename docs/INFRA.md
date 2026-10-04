@@ -28,9 +28,7 @@ parallelism: run more nodes, not more threads.
 ## Run it
 
 ```bash
-# 1. a model (any whisper.cpp ggml file works)
-curl -L -o models/ggml-base.en-q5_1.bin \
-  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en-q5_1.bin
+# 1. a model: copy your own ggml file to models/ggml-base.en-q5_1.bin
 
 # 2. two nodes and a router
 docker compose up --build

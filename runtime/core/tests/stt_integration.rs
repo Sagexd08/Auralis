@@ -7,7 +7,7 @@ fn transcribes_known_jfk_sample() {
         .join("../../models/ggml-base.en-q5_1.bin");
 
     if !model.exists() {
-        eprintln!("skipping: model not found at {model:?}, run models/pull-model.ps1 first");
+        eprintln!("skipping: model not found at {model:?}, place a ggml model file there first");
         return;
     }
 

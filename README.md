@@ -60,14 +60,9 @@ The single biggest lever is model size. `base.en` (~59 MB) is the fast default;
 `small.en` (~190 MB) is noticeably better on proper nouns and accented speech at
 roughly 3x the decode cost:
 
-```powershell
-.\models\pull-model.ps1 small.en
-```
-
-An installed copy needs no script: the first launch downloads the default model, and
-**Settings → Download models** fetches the others into the per-user app data folder
-(the repo's `models/` folder is also searched in dev builds). Any downloaded model
-appears in the **Active model** picker. Decoding
+Auralis never downloads models. Put your own ggml `.bin` file in the per-user app data
+`models` folder (the repo's `models/` folder is also searched in dev builds). Any model
+there appears in the **Active model** picker. Decoding
 uses beam search (width 5) with whisper.cpp's temperature-fallback thresholds and
 `no_context`, which together suppress the repetition loops that greedy decoding
 with cross-utterance context is prone to.
@@ -83,7 +78,7 @@ custom-trained model or a full distributed system.
 runtime/core/         auralis-runtime — reusable Rust library (capture, VAD, denoise, STT, text cleanup, pipeline)
 apps/desktop/          Tauri 2 desktop app — tray-only, global hotkey, keystroke injection
 benchmarks/            Python WER/CER/RTF harness — does VAD+denoise actually help? (see benchmarks/README.md)
-models/                downloaded GGUF model weights (gitignored) + pull-model.ps1
+models/                local GGUF model weights (gitignored)
 docs/superpowers/      design doc and implementation plan for this phase
 ```
 
@@ -130,7 +125,7 @@ and the phases after it have since extended it past that plan's original scope.
 - [x] GPU build switches — `--features cuda` / `--features vulkan` forward to whisper.cpp (untested here: needs the toolkit installed; the default CPU build is unaffected)
 - [x] Windows installer + release automation — `.github/workflows/release.yml` builds an NSIS installer on a `v*` tag; signs it when `WINDOWS_CERTIFICATE` / `WINDOWS_CERTIFICATE_PASSWORD` secrets are set, otherwise ships unsigned
 - [x] Local transcription API — `auralis-server` (`POST /v1/transcriptions`)
-- [x] Installed-app readiness — runtime model resolution + first-run model download, single instance, status overlay, fixed settings/status windows (they could not load their scripts), hotkey race guards, safe settings save with hotkey rollback
+- [x] Installed-app readiness — runtime model resolution from local files, single instance, status overlay, fixed settings/status windows (they could not load their scripts), hotkey race guards, safe settings save with hotkey rollback
 
 ## Building
 
@@ -155,8 +150,7 @@ setx LIBCLANG_PATH "%APPDATA%\Python\Python313\site-packages\clang\native"
 cargo build -p auralis-runtime
 cargo test -p auralis-runtime
 
-# Download the whisper.cpp model
-powershell -File models/pull-model.ps1
+# Put a ggml model file in models/ first
 
 # Desktop app
 cd apps/desktop
@@ -166,7 +160,7 @@ npm run tauri dev
 
 ## Download
 
-Grab the Windows installer from the [Releases page](https://github.com/Sagexd08/Auralis/releases/latest) or the project website. The first launch downloads the speech model.
+Grab the Windows installer from the [Releases page](https://github.com/Sagexd08/Auralis/releases/latest) or the project website. Add a speech model file to the models folder before first use.
 
 ## Local API
 

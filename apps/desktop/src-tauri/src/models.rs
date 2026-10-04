@@ -1,9 +1,6 @@
-use anyhow::{bail, Context, Result};
 use serde::Serialize;
-use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::fs;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 
 pub struct ModelSpec {
@@ -18,8 +15,6 @@ pub const CATALOG: &[ModelSpec] = &[
     ModelSpec { file: "ggml-medium.en-q5_1.bin", label: "medium.en — most accurate, needs a fast CPU/GPU", size_mb: 539 },
 ];
 
-const GGML_MAGIC: &[u8; 4] = b"lmgg";
-const MIN_MODEL_BYTES: u64 = 10 * 1024 * 1024;
 
 #[derive(Serialize, Clone)]
 pub struct ModelInfo {
@@ -27,13 +22,6 @@ pub struct ModelInfo {
     pub label: String,
     pub size_mb: Option<u32>,
     pub installed: bool,
-}
-
-#[derive(Serialize, Clone)]
-pub struct DownloadProgress {
-    pub file: String,
-    pub downloaded: u64,
-    pub total: Option<u64>,
 }
 
 pub fn models_dir(app: &AppHandle) -> PathBuf {
@@ -97,73 +85,8 @@ pub fn list(app: &AppHandle) -> Vec<ModelInfo> {
     out
 }
 
-pub fn download(app: &AppHandle, file: &str, mut on_progress: impl FnMut(DownloadProgress)) -> Result<PathBuf> {
-    let spec = CATALOG
-        .iter()
-        .find(|s| s.file == file)
-        .with_context(|| format!("{file:?} is not a downloadable model"))?;
-
-    let dir = models_dir(app);
-    fs::create_dir_all(&dir).context("failed to create models directory")?;
-    let dest = dir.join(spec.file);
-    let part = dir.join(format!("{}.part", spec.file));
-
-    let url = format!("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/{}", spec.file);
-    let agent = ureq::AgentBuilder::new()
-        .timeout_connect(Duration::from_secs(15))
-        .timeout_read(Duration::from_secs(30))
-        .build();
-    let response = agent.get(&url).call().with_context(|| format!("failed to fetch {url}"))?;
-    let total: Option<u64> = response.header("Content-Length").and_then(|v| v.parse().ok());
-
-    let result = (|| -> Result<()> {
-        let mut reader = response.into_reader();
-        let mut out = File::create(&part).context("failed to create temp file")?;
-        let mut buf = vec![0u8; 64 * 1024];
-        let mut downloaded = 0u64;
-        let mut last_report = Instant::now() - Duration::from_secs(1);
-        loop {
-            let n = reader.read(&mut buf).context("download interrupted")?;
-            if n == 0 {
-                break;
-            }
-            out.write_all(&buf[..n])?;
-            downloaded += n as u64;
-            if last_report.elapsed() >= Duration::from_millis(250) {
-                on_progress(DownloadProgress { file: spec.file.to_string(), downloaded, total });
-                last_report = Instant::now();
-            }
-        }
-        out.flush()?;
-        drop(out);
-
-        if let Some(total) = total {
-            if downloaded != total {
-                bail!("download truncated: got {downloaded} of {total} bytes");
-            }
-        }
-        if downloaded < MIN_MODEL_BYTES {
-            bail!("downloaded file is only {downloaded} bytes — not a model");
-        }
-        let mut magic = [0u8; 4];
-        File::open(&part)?.read_exact(&mut magic)?;
-        if &magic != GGML_MAGIC {
-            bail!("downloaded file is not a ggml model");
-        }
-        on_progress(DownloadProgress { file: spec.file.to_string(), downloaded, total });
-        Ok(())
-    })();
-
-    match result {
-        Ok(()) => {
-            fs::rename(&part, &dest).context("failed to move model into place")?;
-            Ok(dest)
-        }
-        Err(e) => {
-            let _ = fs::remove_file(&part);
-            Err(e)
-        }
-    }
+pub fn missing_message(app: &AppHandle, file: &str) -> String {
+    format!("Model not found: place {file} in {}", models_dir(app).display())
 }
 
 #[cfg(test)]

@@ -36,7 +36,7 @@ class HarnessSmokeTest(unittest.TestCase):
         if self.bench_cli is None:
             self.skipTest("auralis-bench-cli not built; run: cargo build -p auralis-runtime --bin auralis-bench-cli")
         if not MODEL_PATH.exists():
-            self.skipTest(f"model not found at {MODEL_PATH}; run models/pull-model.ps1")
+            self.skipTest(f"model not found at {MODEL_PATH}; place a ggml model file there")
 
     def test_clean_fixture_transcribes_and_scores(self):
         dataset_dir = BENCH_DIR / "datasets" / "fixtures"

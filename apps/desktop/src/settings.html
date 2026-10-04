@@ -235,11 +235,10 @@
             ok.textContent = "Installed";
             row.appendChild(ok);
           } else {
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.textContent = "Download";
-            btn.addEventListener("click", () => downloadModel(m.file));
-            row.appendChild(btn);
+            const missing = document.createElement("span");
+            missing.className = "state";
+            missing.textContent = "Not installed";
+            row.appendChild(missing);
           }
           modelList.appendChild(row);
         }
@@ -248,27 +247,6 @@
       async function refreshModels() {
         renderModels(await invoke("list_models"));
       }
-
-      async function downloadModel(file) {
-        modelList.querySelectorAll("button").forEach((b) => (b.disabled = true));
-        progress.hidden = false;
-        progress.value = 0;
-        setStatus("Downloading model…", "");
-        try {
-          await invoke("download_model", { file });
-          setStatus("Model downloaded.", "ok");
-        } catch (e) {
-          setStatus(String(e), "error");
-        } finally {
-          progress.hidden = true;
-          await refreshModels();
-        }
-      }
-
-      listen("auralis://model-progress", (event) => {
-        const { downloaded, total } = event.payload;
-        if (total) progress.value = Math.round((downloaded * 100) / total);
-      });
 
       const KEY_NAMES = { " ": "Space", ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", Escape: "Esc" };
       let recording = null;

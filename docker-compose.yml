@@ -3,7 +3,7 @@
 #   docker compose up --build                       nodes + router
 #   docker compose --profile observability up       also Prometheus and Grafana
 #
-# Put a model in ./models first (models/pull-model.ps1, or see docs/INFRA.md).
+# Put a model in ./models first (see docs/INFRA.md).
 # Only the router, Prometheus and Grafana are published, and only on localhost.
 
 x-node: &node

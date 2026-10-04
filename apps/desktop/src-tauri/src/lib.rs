@@ -24,7 +24,6 @@ struct AppState {
     held: Arc<AtomicBool>,
     ptt_active: Arc<AtomicBool>,
     continuous_active: Arc<AtomicBool>,
-    downloading: Arc<AtomicBool>,
     status_gen: Arc<AtomicU64>,
     startup_warning: Mutex<Option<String>>,
     last_insertion: Arc<Mutex<Option<LastInsertion>>>,
@@ -96,7 +95,7 @@ fn set_status(app: &AppHandle, text: impl Into<String>) {
     }
     let _ = window.show();
 
-    let sticky = ["Listening", "Processing", "Downloading", "Loading"]
+    let sticky = ["Listening", "Processing", "Loading"]
         .iter()
         .any(|p| text.starts_with(p));
     if !sticky {
@@ -335,23 +334,6 @@ fn show_welcome_window(app: &AppHandle) {
     }
 }
 
-fn download_with_status(app: &AppHandle, file: &str) -> anyhow::Result<PathBuf> {
-    let state = app.state::<AppState>();
-    if state.downloading.swap(true, Ordering::SeqCst) {
-        anyhow::bail!("a model download is already in progress");
-    }
-    let result = models::download(app, file, |progress| {
-        if let Some(total) = progress.total.filter(|t| *t > 0) {
-            set_status(app, format!("Downloading model… {}%", progress.downloaded * 100 / total));
-        } else {
-            set_status(app, "Downloading model…");
-        }
-        let _ = app.emit("auralis://model-progress", &progress);
-    });
-    state.downloading.store(false, Ordering::SeqCst);
-    result
-}
-
 fn ensure_pipeline(app: &AppHandle) -> anyhow::Result<()> {
     let state = app.state::<AppState>();
     if lock(&state.pipeline).is_some() {
@@ -359,10 +341,8 @@ fn ensure_pipeline(app: &AppHandle) -> anyhow::Result<()> {
     }
 
     let model_file = lock(&state.config).model_file.clone();
-    let path = match models::find(app, &model_file) {
-        Some(p) => p,
-        None => download_with_status(app, &model_file)?,
-    };
+    let path = models::find(app, &model_file)
+        .ok_or_else(|| anyhow::anyhow!(models::missing_message(app, &model_file)))?;
 
     set_status(app, "Loading model…");
     let pipeline = Pipeline::with_cleanup_mode(&path, state.cleanup_mode.clone())?;
@@ -379,7 +359,6 @@ fn get_config(state: tauri::State<AppState>) -> AppConfig {
 #[derive(serde::Serialize)]
 struct SetupState {
     ready: bool,
-    downloading: bool,
     status: String,
 }
 
@@ -387,7 +366,6 @@ struct SetupState {
 fn setup_state(state: tauri::State<AppState>) -> SetupState {
     SetupState {
         ready: lock(&state.pipeline).is_some(),
-        downloading: state.downloading.load(Ordering::SeqCst),
         status: lock(&state.last_status).clone(),
     }
 }
@@ -412,23 +390,6 @@ fn get_startup_warning(state: tauri::State<AppState>) -> Option<String> {
 #[tauri::command]
 fn list_models(app: AppHandle) -> Vec<models::ModelInfo> {
     models::list(&app)
-}
-
-#[tauri::command]
-async fn download_model(app: AppHandle, file: String) -> Result<(), String> {
-    let app_for_job = app.clone();
-    tauri::async_runtime::spawn_blocking(move || -> anyhow::Result<()> {
-        download_with_status(&app_for_job, &file)?;
-        ensure_pipeline(&app_for_job)
-    })
-    .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| {
-        set_status(&app, "Idle");
-        format!("{e:#}")
-    })?;
-    set_status(&app, "Idle");
-    Ok(())
 }
 
 #[tauri::command]
@@ -521,7 +482,6 @@ pub fn run() {
             get_config,
             save_config,
             list_models,
-            download_model,
             list_mic_devices,
             list_cleanup_modes,
             get_startup_warning,
@@ -541,7 +501,6 @@ pub fn run() {
                 held: Arc::new(AtomicBool::new(false)),
                 ptt_active: Arc::new(AtomicBool::new(false)),
                 continuous_active: Arc::new(AtomicBool::new(false)),
-                downloading: Arc::new(AtomicBool::new(false)),
                 status_gen: Arc::new(AtomicU64::new(0)),
                 startup_warning: Mutex::new(None),
                 last_insertion: Arc::new(Mutex::new(None)),
