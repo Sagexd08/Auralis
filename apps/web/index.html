@@ -251,7 +251,7 @@
           <p style="--d:.35s" class="hero-in mt-4 max-w-md text-sm leading-relaxed text-[#010101]/70 sm:text-base lg:text-white/70">Real-time push-to-talk dictation that turns your voice into clean text, wherever you work.</p>
 
           <div style="--d:.5s" class="hero-in mt-6 flex flex-wrap items-center gap-3 sm:mt-8">
-            <a href="#download" class="cta group inline-flex items-center gap-3 rounded-full py-2.5 pl-6 pr-2.5 text-sm font-medium text-white transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]">Download for Windows<span class="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 12l5 5 5-5M5 20h14"/></svg></span></a>
+            <a href="#download" data-download class="cta group inline-flex items-center gap-3 rounded-full py-2.5 pl-6 pr-2.5 text-sm font-medium text-white transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]">Download for Windows<span class="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 12l5 5 5-5M5 20h14"/></svg></span></a>
             <a href="#story" class="group inline-flex items-center gap-3 rounded-full bg-white/10 py-2.5 pl-6 pr-2.5 text-sm font-medium text-[#010101] backdrop-blur-lg transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-white/15 active:scale-[0.98] lg:text-white">Read the story<span class="flex h-8 w-8 items-center justify-center rounded-full bg-black/10 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-y-0.5 lg:bg-white/10" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></span></a>
           </div>
           <a href="playground.html" style="--d:.6s" class="hero-in launch-chip mt-5" data-countdown-chip><span class="launch-dot" aria-hidden="true"></span><span>Playground launches in <b data-chip>14 days</b></span></a>
@@ -700,6 +700,10 @@ curl -X POST \
     }
     if (!exe) { noRelease('No installer has been published yet. Build it from source below, or watch the repository for the first release.'); return; }
     dlBtn.href = exe.browser_download_url;
+    document.querySelectorAll('[data-download]').forEach(function (a) {
+      a.href = exe.browser_download_url;
+      a.title = 'Download ' + rel.tag_name + ' (' + (exe.size / 1048576).toFixed(1) + ' MB)';
+    });
     dlLabel.textContent = 'Download ' + rel.tag_name + ' for Windows';
     var d = new Date(rel.published_at);
     dlMeta.textContent = exe.name + ' \u00b7 ' + (exe.size / 1048576).toFixed(1) + ' MB \u00b7 ' + d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + (rel.prerelease ? ' \u00b7 pre-release' : '');
