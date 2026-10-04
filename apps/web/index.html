@@ -3,516 +3,148 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Auralis — dictation that never leaves your PC</title>
-<meta name="description" content="Open-source, on-device push-to-talk dictation for Windows. Hold Ctrl+Space, speak, release. Cleaned-up text is typed into whatever app has focus. No cloud, no telemetry." />
-<meta name="theme-color" content="#0c0d10" />
+<title>Auralis — Speak naturally. Type nothing.</title>
+<meta name="description" content="Real-time push-to-talk dictation that turns your voice into clean text, wherever you work. Open source, runs on your PC." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root {
-    --ink: #0c0d10;
-    --ink-2: #14161b;
-    --ink-3: #1d2027;
-    --rule: #2a2e37;
-    --text: #e6e7ea;
-    --dim: #a3a7b1;
-    --faint: #7d818c;
-    --sub: #f2d14b;
-    --sub-ink: #15130a;
-    --danger: #ff8a7a;
-    --display: "Archivo", "Arial Narrow", Arial, sans-serif;
-    --body: "Archivo", system-ui, "Segoe UI", sans-serif;
-    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
-    --maxw: 1180px;
-    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --auralis-black: #010101;
+    --auralis-white: #ffffff;
+    --auralis-cta-top: #2B2B2B;
+    --auralis-cta-bottom: #101010;
+    --auralis-cta-gradient: linear-gradient(to bottom, #2B2B2B, #101010);
+    --auralis-glass: rgba(255,255,255,0.10);
   }
-
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; scrollbar-color: var(--rule) var(--ink); }
+  html, body { height: 100%; margin: 0; background: #010101; }
   body {
-    margin: 0;
-    background: var(--ink);
-    color: var(--text);
-    font: 400 17px/1.6 var(--body);
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  ::selection { background: var(--sub); color: var(--sub-ink); }
-  a { color: inherit; text-decoration-color: var(--faint); text-underline-offset: 0.22em; }
-  a:hover { text-decoration-color: var(--sub); }
-  :focus-visible { outline: 2px solid var(--sub); outline-offset: 3px; border-radius: 2px; }
-  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
-  code, pre { font-family: var(--mono); }
-
-  header { border-bottom: 1px solid var(--rule); }
-  .nav { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 24px; }
-  .brand { font: 800 20px/1 var(--display); font-stretch: 115%; letter-spacing: -0.01em; text-decoration: none; display: flex; align-items: center; gap: 10px; }
-  .brand i { width: 10px; height: 10px; background: var(--sub); border-radius: 50%; display: block; }
-  .links { display: flex; gap: 26px; font-size: 15px; color: var(--dim); }
-  .links a { text-decoration: none; }
-  .links a:hover { color: var(--text); }
-
-  .hero { padding: 72px 0 56px; }
-  h1 {
-    font-family: var(--display); font-weight: 800; font-size: clamp(48px, 9vw, 112px); line-height: 0.94;
-    font-stretch: 112%;
-    letter-spacing: -0.035em;
-    margin: 0 0 28px;
-    text-wrap: balance;
-  }
-  .hero-sub { max-width: 52ch; color: var(--dim); font-size: 19px; margin: 0 0 32px; }
-  .hero-sub strong { color: var(--text); font-weight: 600; }
-  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-bottom: 52px; }
-
-  .btn {
-    display: inline-flex; align-items: center; gap: 10px;
-    padding: 16px 28px;
-    background: var(--sub); color: var(--sub-ink);
-    font: 700 17px/1 var(--display); font-stretch: 108%;
-    text-decoration: none;
-    border-radius: 3px;
-    transition: transform 0.25s var(--ease), background 0.2s;
-  }
-  .btn:hover { transform: translateY(-2px); background: #f7dd6b; }
-  .btn:active { transform: translateY(0); }
-  .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--rule); }
-  .btn.ghost:hover { background: var(--ink-2); border-color: var(--faint); }
-  .btn svg { width: 18px; height: 18px; }
-  .meta { font: 400 13px/1.5 var(--mono); color: var(--dim); }
-  .meta strong { color: var(--text); font-weight: 600; }
-
-  .frame {
-    position: relative;
-    aspect-ratio: 2.39 / 1;
-    min-height: 260px;
-    background: #050506;
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .frame::before, .frame::after {
-    content: ""; position: absolute; left: 0; right: 0; height: 9%; background: #000; z-index: 2;
-  }
-  .frame::before { top: 0; }
-  .frame::after { bottom: 0; }
-  .hud { position: absolute; z-index: 3; left: 24px; right: 24px; top: 14%; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-  .state { font: 600 13px/1 var(--mono); color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; display: flex; align-items: center; gap: 9px; transition: color 0.3s; }
-  .state::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--faint); transition: background 0.3s; }
-  .frame[data-phase="listen"] .state { color: var(--danger); }
-  .frame[data-phase="listen"] .state::before { background: var(--danger); animation: blink 1s steps(2, jump-none) infinite; }
-  .frame[data-phase="type"] .state, .frame[data-phase="fix"] .state { color: var(--sub); }
-  .frame[data-phase="type"] .state::before, .frame[data-phase="fix"] .state::before { background: var(--sub); }
-  @keyframes blink { 50% { opacity: 0.2; } }
-  .keys { display: flex; gap: 8px; align-items: center; font: 600 13px/1 var(--mono); color: var(--faint); }
-  .key {
-    padding: 8px 12px; border: 1px solid var(--rule); border-bottom-width: 3px; border-radius: 4px;
-    background: var(--ink-2); color: var(--dim); transition: background 0.15s, color 0.15s, transform 0.15s, border-color 0.15s;
-  }
-  .frame[data-phase="listen"] .key { background: var(--sub); color: var(--sub-ink); border-color: #b99a22; transform: translateY(2px); }
-  .heard {
-    position: absolute; z-index: 3; left: 24px; right: 24px; top: 38%;
-    font: 400 15px/1.4 var(--mono); color: var(--faint); min-height: 22px;
-  }
-  .heard b { color: var(--dim); font-weight: 400; }
-  .caption {
-    position: absolute; z-index: 3; left: 6%; right: 6%; bottom: 16%;
-    text-align: center;
-    font: 600 clamp(20px, 3.4vw, 40px)/1.25 var(--body);
-    color: var(--sub);
-    text-shadow: 0 2px 0 #000, 0 0 3px #000, 2px 0 0 #000, -2px 0 0 #000;
-    min-height: 1.25em;
-    text-wrap: balance;
-  }
-  .caret { display: inline-block; width: 0.08em; height: 0.95em; background: var(--sub); vertical-align: -0.1em; margin-left: 3px; animation: blink 0.9s steps(2, jump-none) infinite; }
-  .tc { position: absolute; z-index: 3; right: 24px; bottom: 11%; font: 400 12px/1 var(--mono); color: var(--faint); }
-  .frame-note { margin: 12px 0 0; font: 400 13px/1.5 var(--mono); color: var(--faint); }
-
-  section { padding: 96px 0; border-top: 1px solid var(--rule); }
-  h2 { font-family: var(--display); font-weight: 800; font-size: clamp(32px, 5vw, 56px); line-height: 1.02; font-stretch: 108%; letter-spacing: -0.03em; margin: 0 0 18px; text-wrap: balance; }
-  .lede { font-size: 20px; color: var(--dim); max-width: 56ch; margin: 0 0 48px; }
-  h3 { font: 700 20px/1.2 var(--display); font-stretch: 105%; margin: 0 0 8px; letter-spacing: -0.01em; }
-  p { margin: 0 0 16px; }
-
-  .track { display: grid; grid-template-columns: 1fr 1fr 1.3fr 2fr 1.4fr 1.2fr; gap: 3px; margin-bottom: 40px; }
-  .seg { background: var(--ink-3); padding: 14px 14px 16px; min-height: 120px; display: flex; flex-direction: column; justify-content: space-between; transition: background 0.25s; }
-  .seg:hover { background: #262a33; }
-  .seg:nth-child(4) { background: var(--sub); color: var(--sub-ink); }
-  .seg:nth-child(4):hover { background: #f7dd6b; }
-  .seg .t { font: 400 11px/1 var(--mono); color: var(--faint); }
-  .seg:nth-child(4) .t { color: #5e5217; }
-  .seg .n { font: 700 18px/1.1 var(--display); font-stretch: 108%; }
-  .seg .d { font-size: 13px; color: var(--dim); line-height: 1.35; margin-top: 6px; }
-  .seg:nth-child(4) .d { color: #3a3411; }
-  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 40px; }
-  .facts p { color: var(--dim); }
-
-  .modes { border-top: 1px solid var(--rule); }
-  .mode { display: grid; grid-template-columns: 150px 1fr 1.3fr; gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--rule); align-items: baseline; }
-  .mode .name { font: 600 14px/1 var(--mono); color: var(--sub); text-transform: uppercase; letter-spacing: 0.06em; }
-  .mode .what { color: var(--dim); font-size: 15px; }
-  .mode .out { font: 400 15px/1.4 var(--mono); color: var(--text); }
-  .modes-head { display: grid; grid-template-columns: 150px 1fr 1.3fr; gap: 24px; padding: 0 0 12px; font: 400 12px/1 var(--mono); color: var(--faint); }
-  .modes-note { font: 400 13px/1.6 var(--mono); color: var(--faint); margin-top: 18px; }
-
-  pre {
-    background: #07080a; border: 1px solid var(--rule); border-radius: 4px;
-    padding: 20px 22px; overflow-x: auto; font-size: 14px; line-height: 1.75; margin: 0 0 18px; color: var(--text);
-  }
-  pre .m { color: var(--faint); }
-  pre .y { color: var(--sub); }
-  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
-
-  .download { background: var(--sub); color: var(--sub-ink); border-top: 0; }
-  .download h2 { color: var(--sub-ink); }
-  .download .lede { color: #3a3411; }
-  .download ::selection { background: var(--sub-ink); color: var(--sub); }
-  .download .dl { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; margin-bottom: 40px; }
-  .btn.dark { background: var(--sub-ink); color: var(--sub); font-size: 20px; padding: 20px 34px; }
-  .btn.dark:hover { background: #000; }
-  .download .meta { color: #3a3411; }
-  .download .meta strong { color: var(--sub-ink); }
-  .download :focus-visible { outline-color: var(--sub-ink); }
-  .steps { margin: 0 0 32px; padding: 0; list-style: none; counter-reset: s; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 28px; }
-  .steps li { counter-increment: s; font-size: 16px; line-height: 1.5; color: #2b270e; }
-  .steps li::before { content: counter(s); display: block; font: 800 44px/1 var(--display); font-stretch: 115%; margin-bottom: 8px; color: var(--sub-ink); }
-  .kbd { font: 600 0.85em/1 var(--mono); padding: 3px 7px; border: 1px solid currentColor; border-radius: 3px; white-space: nowrap; }
-  .smart { max-width: 70ch; font-size: 15px; color: #2b270e; margin: 0; padding-top: 22px; border-top: 1px solid rgba(21, 19, 10, 0.3); }
-  .smart strong { color: var(--sub-ink); }
-
-  .status { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; }
-  .status h3 { font: 600 13px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); margin-bottom: 18px; }
-  ul.list { list-style: none; margin: 0; padding: 0; }
-  ul.list li { padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 16px; color: var(--dim); display: flex; gap: 14px; }
-  ul.list li b { font: 600 12px/1.9 var(--mono); color: var(--sub); flex: none; width: 52px; }
-  ul.list.todo li b { color: var(--faint); }
-  .honest { margin-top: 40px; max-width: 66ch; color: var(--dim); padding: 20px 22px; background: var(--ink-2); border-radius: 4px; font-size: 16px; }
-  .honest strong { color: var(--text); }
-
-  .oss-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 40px; margin-bottom: 40px; }
-  .oss-grid p { color: var(--dim); }
-  .oss-links { display: flex; flex-wrap: wrap; gap: 12px; }
-
-  footer { border-top: 1px solid var(--rule); padding: 36px 0 56px; color: var(--faint); font-size: 14px; }
-  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-
-  @media (max-width: 860px) {
-    .links .opt { display: none; }
-    .track { grid-template-columns: 1fr 1fr; }
-    .seg { min-height: 96px; }
-    .mode { grid-template-columns: 1fr; gap: 6px; }
-    .modes-head { display: none; }
-    .split, .status { grid-template-columns: 1fr; gap: 32px; }
-    .frame { aspect-ratio: 16 / 10; }
-    .hud { top: 13%; }
-    .heard { top: 36%; }
-    .keys { display: none; }
-    section { padding: 64px 0; }
-    .hero { padding: 44px 0 40px; }
-  }
+  .cta { background: var(--auralis-cta-gradient); }
+  :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) {
-    html { scroll-behavior: auto; }
-    .btn, .seg, .key { transition: none; }
-    .caret, .state::before { animation: none !important; }
+    *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
   }
 </style>
 </head>
 <body>
+<section class="relative h-screen w-full overflow-hidden">
+  <video
+    src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260803_192301_9231ed6b-c55c-4a48-909c-4ebe11cf2e11.mp4"
+    autoplay loop muted playsinline aria-hidden="true"
+    class="absolute inset-0 h-full w-full object-cover"></video>
 
-<header>
-  <div class="wrap nav">
-    <a class="brand" href="#top"><i></i>Auralis</a>
-    <nav class="links" aria-label="Primary">
-      <a href="#how" class="opt">How it works</a>
-      <a href="#modes" class="opt">Modes</a>
-      <a href="#api" class="opt">API</a>
-      <a href="#download">Download</a>
-      <a href="https://github.com/Sagexd08/Auralis">GitHub</a>
-    </nav>
-  </div>
-</header>
-
-<main id="top">
-  <div class="wrap hero">
-    <h1>Say it.<br />It’s typed.</h1>
-    <p class="hero-sub">
-      Hold <span class="kbd">Ctrl</span> + <span class="kbd">Space</span>, speak, release. Clean text lands in whatever app has focus.
-      <strong>Everything runs on your PC.</strong> No cloud speech-to-text, no telemetry. Free and open source.
-    </p>
-    <div class="actions">
-      <a class="btn" id="dl-btn-hero" href="https://github.com/Sagexd08/Auralis/releases/latest">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M3.5 16.5h13"/></svg>
-        Download for Windows
+  <div class="relative z-10 flex h-full flex-col">
+    <nav class="relative z-50 flex items-center justify-between px-5 py-5 sm:px-8 sm:py-6 lg:px-12" aria-label="Primary">
+      <a href="#" class="flex items-center gap-2 text-[#010101] lg:text-white">
+        <svg width="24" height="24" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M 128 128 C 128 198.692 70.692 256 0 256 C 0 185.308 57.308 128 128 128 Z M 128 128 C 198.692 128 256 185.308 256 256 C 185.308 256 128 198.692 128 128 Z M 0 0 C 70.692 0 128 57.308 128 128 C 57.308 128 0 70.692 0 0 Z M 256 0 C 256 70.692 198.692 128 128 128 C 128 57.308 185.308 0 256 0 Z"/></svg>
+        <span class="text-lg font-semibold">auralis</span>
       </a>
-      <a class="btn ghost" href="https://github.com/Sagexd08/Auralis">View source</a>
-      <span class="meta" id="dl-meta-hero">Windows 10 and 11 · MIT licensed</span>
-    </div>
 
-    <div class="frame" id="frame" data-phase="idle" role="img" aria-label="Demonstration: a spoken sentence is typed as a caption, then a spoken correction retypes it in place.">
-      <div class="hud">
-        <span class="state" id="state">Idle</span>
-        <span class="keys" aria-hidden="true"><span class="key">Ctrl</span>+<span class="key">Space</span></span>
+      <div class="hidden md:flex items-center gap-3">
+        <div class="flex items-center gap-1 rounded-full bg-white/10 p-1.5 backdrop-blur-lg">
+          <a href="https://github.com/Sagexd08/Auralis#readme" class="rounded-full px-4 py-1.5 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white">Product</a>
+          <a href="https://github.com/Sagexd08/Auralis#how-it-works" class="rounded-full px-4 py-1.5 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white">How it works</a>
+          <a href="https://github.com/Sagexd08/Auralis/blob/main/SECURITY.md" class="rounded-full px-4 py-1.5 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white">Privacy</a>
+          <a href="https://github.com/Sagexd08/Auralis/releases/latest" class="rounded-full px-4 py-1.5 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white">Download</a>
+        </div>
+        <a href="https://github.com/Sagexd08/Auralis/releases/latest" class="cta self-stretch inline-flex items-center rounded-full px-5 text-sm font-medium text-white transition-opacity hover:opacity-90">Get Auralis</a>
       </div>
-      <div class="heard" id="heard" aria-hidden="true"></div>
-      <div class="caption" id="caption" aria-live="off"></div>
-      <div class="tc" id="tc" aria-hidden="true">00:00:00:00</div>
-    </div>
-    <p class="frame-note">Demonstration with sample sentences. The correction retypes the whole line in place, as the app does.</p>
+
+      <button id="menu-btn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="drawer"
+        class="relative z-50 h-10 w-10 rounded-full bg-white/10 backdrop-blur-lg md:hidden text-[#010101] lg:text-white">
+        <svg id="ic-menu" class="absolute inset-0 m-auto h-5 w-5 transition-all duration-300 opacity-100 rotate-0 scale-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <svg id="ic-x" class="absolute inset-0 m-auto h-5 w-5 transition-all duration-300 -rotate-90 scale-0 opacity-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </nav>
+
+    <div id="overlay" class="fixed inset-0 z-40 bg-black/80 backdrop-blur-md transition-opacity duration-300 opacity-0 pointer-events-none"></div>
+    <aside id="drawer" aria-hidden="true"
+      class="fixed right-0 top-0 z-40 flex h-full w-72 translate-x-full flex-col bg-black/90 backdrop-blur-xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]">
+      <div class="flex flex-col gap-2 px-6 pt-24">
+        <a data-m href="https://github.com/Sagexd08/Auralis#readme" class="rounded-xl px-4 py-3.5 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white opacity-0 translate-x-[24px] transition-all duration-300">Product</a>
+        <a data-m href="https://github.com/Sagexd08/Auralis#how-it-works" class="rounded-xl px-4 py-3.5 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white opacity-0 translate-x-[24px] transition-all duration-300">How it works</a>
+        <a data-m href="https://github.com/Sagexd08/Auralis/blob/main/SECURITY.md" class="rounded-xl px-4 py-3.5 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white opacity-0 translate-x-[24px] transition-all duration-300">Privacy</a>
+        <a data-m href="https://github.com/Sagexd08/Auralis/releases/latest" class="rounded-xl px-4 py-3.5 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white opacity-0 translate-x-[24px] transition-all duration-300">Download</a>
+      </div>
+      <div id="m-cta" class="mt-auto px-6 pb-10 opacity-0 translate-y-4 transition-all duration-[400ms]">
+        <a href="https://github.com/Sagexd08/Auralis/releases/latest" class="cta block w-full rounded-full px-6 py-3 text-center text-sm font-medium text-white transition-opacity hover:opacity-90">Get Auralis</a>
+      </div>
+    </aside>
+
+    <main class="mt-auto px-5 pb-8 sm:px-8 sm:pb-12 lg:px-12 lg:pb-16">
+      <div class="flex flex-col gap-6 sm:gap-8 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 class="max-w-xl text-3xl font-semibold leading-[1.1] tracking-tight text-[#010101] sm:text-4xl lg:text-[3.5rem] lg:text-white">Speak naturally.<br />Type nothing.</h1>
+          <p class="mt-4 max-w-md text-sm leading-relaxed text-[#010101]/70 sm:text-base lg:text-white/70">Real-time push-to-talk dictation that turns your voice into clean text, wherever you work.</p>
+
+          <form id="cta-form" action="https://github.com/Sagexd08/Auralis/releases/latest" class="mt-6 flex flex-col gap-3 sm:mt-8 sm:inline-flex sm:flex-row sm:items-center sm:rounded-full sm:bg-white sm:p-1.5">
+            <label for="email" class="sr-only">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" placeholder="Enter your email"
+              class="rounded-full bg-white px-5 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none sm:w-64 sm:rounded-none sm:bg-transparent sm:px-4 sm:py-2" />
+            <button type="submit" class="cta rounded-full px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 sm:py-2.5">Get Auralis</button>
+          </form>
+        </div>
+
+        <div class="flex flex-col gap-4 sm:flex-row lg:w-auto lg:gap-5">
+          <div class="flex flex-col justify-between rounded-2xl bg-white/10 p-5 backdrop-blur-lg sm:w-64 sm:p-6">
+            <div class="text-3xl font-normal tracking-tight text-[#010101] sm:text-4xl lg:text-white" style="font-family:'Silkscreen',cursive;font-weight:400">LIVE</div>
+            <p class="mt-3 text-sm leading-relaxed text-[#010101]/70 sm:mt-4 lg:text-white/70">Your words become text as you speak — without stopping to type.</p>
+          </div>
+          <div class="flex flex-col justify-between rounded-2xl bg-white/10 p-5 backdrop-blur-lg sm:w-64 sm:p-6">
+            <div>
+              <div class="mb-3 flex items-center gap-2 text-[#010101] sm:mb-4 lg:text-white">
+                <svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M 128 128 C 128 198.692 70.692 256 0 256 C 0 185.308 57.308 128 128 128 Z M 128 128 C 198.692 128 256 185.308 256 256 C 185.308 256 128 198.692 128 128 Z M 0 0 C 70.692 0 128 57.308 128 128 C 57.308 128 0 70.692 0 0 Z M 256 0 C 256 70.692 198.692 128 128 128 C 128 57.308 185.308 0 256 0 Z"/></svg>
+                <span class="text-sm font-semibold">Auralis</span>
+              </div>
+              <p class="text-sm leading-relaxed text-[#010101]/80 lg:text-white/80">Hold a key.<br />Say what you mean.<br />Release.</p>
+            </div>
+            <p class="mt-4 text-xs text-[#010101]/60 sm:mt-5 lg:text-white/60">Instant transcription</p>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
-
-  <section id="how">
-    <div class="wrap">
-      <h2>Six stages, all local.</h2>
-      <p class="lede">Audio never leaves the machine. Each stage is a small, replaceable part of an open Rust runtime.</p>
-      <div class="track" role="list">
-        <div class="seg" role="listitem"><span class="t">IN</span><div><div class="n">Mic</div><div class="d">cpal, default or chosen device</div></div></div>
-        <div class="seg" role="listitem"><span class="t">TRIM</span><div><div class="n">VAD</div><div class="d">drops leading and trailing silence</div></div></div>
-        <div class="seg" role="listitem"><span class="t">CLEAN</span><div><div class="n">Denoise</div><div class="d">RNNoise, pure Rust</div></div></div>
-        <div class="seg" role="listitem"><span class="t">SPEECH → TEXT</span><div><div class="n">Whisper</div><div class="d">whisper.cpp, quantized weights, beam search with temperature fallback</div></div></div>
-        <div class="seg" role="listitem"><span class="t">RULES</span><div><div class="n">Cleanup</div><div class="d">four modes, spoken corrections</div></div></div>
-        <div class="seg" role="listitem"><span class="t">OUT</span><div><div class="n">Insert</div><div class="d">keystrokes, clipboard fallback</div></div></div>
-      </div>
-      <div class="facts">
-        <div><h3>Hold or tap</h3><p>Hold <span class="kbd">Ctrl</span> + <span class="kbd">Space</span> for push-to-talk. Tap <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">Space</span> for hands-free dictation that splits on pauses.</p></div>
-        <div><h3>Fix it by voice</h3><p>Say “actually, change Rahul to Rohan” and Auralis backspaces what it typed and retypes the corrected sentence. Corrections expire after 45 seconds so they never eat unrelated text.</p></div>
-        <div><h3>Pick your accuracy</h3><p>Start with the 59&nbsp;MB base model. Switch to small or medium in Settings for better names and accents, at a higher CPU cost.</p></div>
-      </div>
-    </div>
-  </section>
-
-  <section id="modes">
-    <div class="wrap">
-      <h2>You choose how much it rewrites.</h2>
-      <p class="lede">Four cleanup modes, switchable at any time. Raw shows exactly what the model heard.</p>
-      <div class="modes">
-        <div class="modes-head"><span>MODE</span><span>WHAT IT DOES</span><span>“uh git checkout main” BECOMES</span></div>
-        <div class="mode"><span class="name">raw</span><span class="what">Nothing. The model’s output, trimmed.</span><span class="out">uh git checkout main</span></div>
-        <div class="mode"><span class="name">clean</span><span class="what">Capital letter and a terminal mark.</span><span class="out">Uh git checkout main.</span></div>
-        <div class="mode"><span class="name">polished</span><span class="what">Clean, plus drops “uh”, “um”, “erm”.</span><span class="out">Git checkout main.</span></div>
-        <div class="mode"><span class="name">developer</span><span class="what">Drops fillers, adds no capital or period.</span><span class="out">git checkout main</span></div>
-      </div>
-      <p class="modes-note">Real rules from the text layer. Words like “like” and “so” are never removed.</p>
-    </div>
-  </section>
-
-  <section id="api">
-    <div class="wrap">
-      <div class="split">
-        <div>
-          <h2>Use it from anything.</h2>
-          <p class="lede" style="margin-bottom:0">The same pipeline runs as a local HTTP server. Send a WAV file, get text back. It binds to loopback only and has no authentication, so it stays on your machine.</p>
-        </div>
-        <div>
-<pre><span class="m">$</span> auralis-server --model models/ggml-base.en-q5_1.bin
-
-<span class="m">$</span> curl --data-binary @meeting.wav \
-    -H <span class="y">"Content-Type: audio/wav"</span> \
-    <span class="y">"http://127.0.0.1:8787/v1/transcriptions?cleanup=clean"</span>
-
-{ <span class="y">"text"</span>, <span class="y">"duration_s"</span>, <span class="y">"processing_s"</span>, <span class="y">"model"</span> }</pre>
-          <p class="meta">GET /healthz reports the loaded model.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="download" class="download">
-    <div class="wrap">
-      <h2>Download Auralis.</h2>
-      <p class="lede">Windows 10 and 11. Free, open source, and nothing to sign up for.</p>
-      <div class="dl">
-        <a class="btn dark" id="dl-btn" href="https://github.com/Sagexd08/Auralis/releases/latest">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M3.5 16.5h13"/></svg>
-          Download installer
-        </a>
-        <span class="meta" id="dl-meta">Latest release on GitHub</span>
-      </div>
-      <ol class="steps">
-        <li>Run the installer. It installs for your user and needs no administrator rights.</li>
-        <li>Auralis starts in the tray and downloads its speech model, about 59&nbsp;MB, on first launch.</li>
-        <li>Hold <span class="kbd">Ctrl</span> + <span class="kbd">Space</span> in any app, speak, release.</li>
-      </ol>
-      <p class="smart"><strong>Windows may show a SmartScreen warning.</strong> Installers are not code-signed yet, so choose “More info”, then “Run anyway”. The installer is built from this repository by a public workflow, and every line is open to inspect.</p>
-    </div>
-  </section>
-
-  <section id="status">
-    <div class="wrap">
-      <h2>What works, and what doesn’t yet.</h2>
-      <p class="lede">No marketing rounding. This is the actual state of the project.</p>
-      <div class="status">
-        <div>
-          <h3>Working</h3>
-          <ul class="list">
-            <li><b>done</b>Push-to-talk and hands-free dictation</li>
-            <li><b>done</b>Spoken corrections that retype in place</li>
-            <li><b>done</b>Tray app, settings, model downloads on first run</li>
-            <li><b>done</b>Four text cleanup modes, audio quality analysis</li>
-            <li><b>done</b>Local transcription API</li>
-            <li><b>done</b>WER, CER and speed benchmark harness</li>
-            <li><b>done</b>Installer built by release automation</li>
-          </ul>
-        </div>
-        <div>
-          <h3>Not yet</h3>
-          <ul class="list todo">
-            <li><b>todo</b>Code-signed installer</li>
-            <li><b>todo</b>GPU builds verified on real hardware</li>
-            <li><b>todo</b>Published benchmark numbers</li>
-            <li><b>todo</b>macOS and Linux</li>
-            <li><b>todo</b>Streaming API over WebSocket</li>
-          </ul>
-        </div>
-      </div>
-      <p class="honest"><strong>No accuracy numbers are published yet.</strong> The harness measures word error rate, character error rate and real-time factor across model size and preprocessing. Running it on a real corpus is still outstanding, so there is nothing honest to quote. Claims will arrive with the commands that produced them.</p>
-    </div>
-  </section>
-
-  <section id="install">
-    <div class="wrap">
-      <div class="split">
-        <div>
-          <h2>Build it yourself.</h2>
-          <p class="lede" style="margin-bottom:0">For contributors, or to run the latest commit. Needs Rust, Node.js 20+, CMake, and a libclang that works with bindgen 0.69, because whisper.cpp is compiled from source. The README covers the libclang caveat.</p>
-        </div>
-        <div>
-<pre><span class="m">git</span> clone https://github.com/Sagexd08/Auralis
-<span class="m">cd</span> Auralis
-powershell -File models/pull-model.ps1
-
-cargo test -p auralis-runtime -p auralis-desktop
-
-<span class="m">cd</span> apps/desktop
-npm install
-npm run tauri dev</pre>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="contribute">
-    <div class="wrap">
-      <h2>Built in the open.</h2>
-      <p class="lede">MIT licensed. Use it, fork it, make it better.</p>
-      <div class="oss-grid">
-        <div><h3>Read the code</h3><p>A reusable Rust runtime, a Tauri desktop app, and a benchmark harness. Each works on its own.</p></div>
-        <div><h3>Pick up an issue</h3><p>Good places to start: text cleanup rules, hotkey handling, benchmark datasets, macOS and Linux support.</p></div>
-        <div><h3>Measure, don’t guess</h3><p>Accuracy and speed changes should come with before and after numbers from the harness.</p></div>
-      </div>
-      <div class="oss-links">
-        <a class="btn" href="https://github.com/Sagexd08/Auralis/blob/main/CONTRIBUTING.md">Contributing guide</a>
-        <a class="btn ghost" href="https://github.com/Sagexd08/Auralis/issues">Open issues</a>
-        <a class="btn ghost" href="https://github.com/Sagexd08/Auralis">Star on GitHub</a>
-      </div>
-    </div>
-  </section>
-</main>
-
-<footer>
-  <div class="wrap">
-    <span>Auralis · on-device dictation for Windows</span>
-    <span><a href="https://github.com/Sagexd08/Auralis">github.com/Sagexd08/Auralis</a> · <a href="https://github.com/Sagexd08/Auralis/blob/main/LICENSE">MIT license</a></span>
-  </div>
-</footer>
+</section>
 
 <script>
-  (function () {
-    var buttons = [document.getElementById("dl-btn"), document.getElementById("dl-btn-hero")];
-    var metas = [document.getElementById("dl-meta"), document.getElementById("dl-meta-hero")];
-    fetch("https://api.github.com/repos/Sagexd08/Auralis/releases/latest", { headers: { Accept: "application/vnd.github+json" } })
-      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-      .then(function (release) {
-        var asset = (release.assets || []).filter(function (a) { return /\.exe$/i.test(a.name); })[0];
-        if (!asset) return Promise.reject(0);
-        buttons.forEach(function (b) { b.href = asset.browser_download_url; });
-        var mb = (asset.size / 1048576).toFixed(0);
-        var html = "<strong>" + release.tag_name + "</strong> · " + mb + " MB · Windows 10 and 11";
-        metas.forEach(function (m) { m.innerHTML = html; });
-      })
-      .catch(function () {
-        document.getElementById("dl-meta").textContent = "No installer published yet. See the releases page, or build from source below.";
-      });
-  })();
-
-  (function () {
-    var frame = document.getElementById("frame");
-    var stateEl = document.getElementById("state");
-    var heardEl = document.getElementById("heard");
-    var capEl = document.getElementById("caption");
-    var tcEl = document.getElementById("tc");
-    var first = "Send the report to Rahul tomorrow.";
-    var fixed = "Send the report to Rohan tomorrow.";
-    var spoken = "Actually, change Rahul to Rohan.";
-    var labels = { idle: "Idle", listen: "Listening", type: "Typing", fix: "Correcting" };
-    var timer = null;
-    var frames = 0;
-
-    function phase(name) {
-      frame.setAttribute("data-phase", name);
-      stateEl.textContent = labels[name];
-    }
-    function pad(n) { return n < 10 ? "0" + n : "" + n; }
-    function tick() {
-      frames += 3;
-      var f = frames % 24, s = Math.floor(frames / 24) % 60, m = Math.floor(frames / 1440);
-      tcEl.textContent = "00:" + pad(m) + ":" + pad(s) + ":" + pad(f);
-    }
-    function caret() { return '<span class="caret"></span>'; }
-    function wait(ms) { return new Promise(function (r) { timer = setTimeout(r, ms); }); }
-    function typeInto(text, per) {
-      var i = 0;
-      return new Promise(function (resolve) {
-        (function step() {
-          capEl.innerHTML = text.slice(0, i) + caret();
-          tick();
-          if (i++ < text.length) timer = setTimeout(step, per); else resolve();
-        })();
-      });
-    }
-    function backspace(per) {
-      var text = capEl.textContent;
-      return new Promise(function (resolve) {
-        (function step() {
-          capEl.innerHTML = text + caret();
-          tick();
-          if (text.length-- > 0) timer = setTimeout(step, per); else resolve();
-        })();
-      });
-    }
-
-    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      phase("type");
-      stateEl.textContent = "Typed";
-      heardEl.innerHTML = "<b>heard:</b> " + spoken;
-      capEl.textContent = fixed;
-      return;
-    }
-
-    async function loop() {
-      for (;;) {
-        capEl.innerHTML = "";
-        heardEl.innerHTML = "";
-        phase("idle");
-        await wait(900);
-        phase("listen");
-        heardEl.innerHTML = "<b>heard:</b> " + first.replace(/\.$/, "") + "…";
-        await wait(1700);
-        phase("type");
-        await typeInto(first, 34);
-        await wait(1300);
-        phase("listen");
-        heardEl.innerHTML = "<b>heard:</b> " + spoken;
-        await wait(1500);
-        phase("fix");
-        await backspace(12);
-        await typeInto(fixed, 34);
-        capEl.innerHTML = fixed + caret();
-        await wait(3200);
-      }
-    }
-
-    loop();
-  })();
+(function () {
+  var btn = document.getElementById('menu-btn'), overlay = document.getElementById('overlay'),
+      drawer = document.getElementById('drawer'), icM = document.getElementById('ic-menu'),
+      icX = document.getElementById('ic-x'), mcta = document.getElementById('m-cta'),
+      links = Array.prototype.slice.call(document.querySelectorAll('[data-m]'));
+  var open = false;
+  function set(v) {
+    open = v;
+    document.body.style.overflow = v ? 'hidden' : '';
+    btn.setAttribute('aria-expanded', v);
+    btn.setAttribute('aria-label', v ? 'Close menu' : 'Open menu');
+    drawer.setAttribute('aria-hidden', !v);
+    overlay.classList.toggle('opacity-0', !v); overlay.classList.toggle('pointer-events-none', !v);
+    overlay.classList.toggle('opacity-100', v); overlay.classList.toggle('pointer-events-auto', v);
+    drawer.classList.toggle('translate-x-full', !v); drawer.classList.toggle('translate-x-0', v);
+    icM.classList.toggle('opacity-100', !v); icM.classList.toggle('rotate-0', !v); icM.classList.toggle('scale-100', !v);
+    icM.classList.toggle('rotate-90', v); icM.classList.toggle('scale-0', v); icM.classList.toggle('opacity-0', v);
+    icX.classList.toggle('-rotate-90', !v); icX.classList.toggle('scale-0', !v); icX.classList.toggle('opacity-0', !v);
+    icX.classList.toggle('rotate-0', v); icX.classList.toggle('scale-100', v); icX.classList.toggle('opacity-100', v);
+    links.forEach(function (a, i) {
+      a.style.transitionDelay = v ? ((i + 1) * 60) + 'ms' : '0ms';
+      a.classList.toggle('opacity-0', !v); a.classList.toggle('translate-x-[24px]', !v);
+      a.classList.toggle('opacity-100', v); a.classList.toggle('translate-x-0', v);
+    });
+    mcta.style.transitionDelay = v ? '300ms' : '0ms';
+    mcta.classList.toggle('opacity-0', !v); mcta.classList.toggle('translate-y-4', !v);
+    mcta.classList.toggle('opacity-100', v); mcta.classList.toggle('translate-y-0', v);
+  }
+  btn.addEventListener('click', function () { set(!open); });
+  overlay.addEventListener('click', function () { set(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && open) set(false); });
+  window.addEventListener('pagehide', function () { document.body.style.overflow = ''; });
+})();
 </script>
 </body>
 </html>
