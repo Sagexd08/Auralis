@@ -24,3 +24,9 @@ launch-video/
 
 # internal product requirements doc
 auralis_prd_end_to_end.md
+
+# Data Factory outputs (large, regenerable)
+data/raw/
+data/corpora/
+data/manifests/
+.pytest_cache/
