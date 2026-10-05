@@ -9,12 +9,12 @@ import soundfile as sf
 from scipy.signal import resample_poly
 
 TARGET_SR = 16000
-DISALLOWED = re.compile(r"[^A-Z' ]")
+DISALLOWED = re.compile(r"[^a-z' ]")
 PUNCTUATION = str.maketrans({c: " " for c in '.,?!;:"()-'})
 
 
 def clean_transcript(text) -> str | None:
-    cleaned = (text or "").upper().replace("’", "'").replace("`", "'").translate(PUNCTUATION)
+    cleaned = (text or "").lower().replace("’", "'").replace("`", "'").translate(PUNCTUATION)
     if DISALLOWED.search(cleaned):
         return None
     cleaned = " ".join(cleaned.split())

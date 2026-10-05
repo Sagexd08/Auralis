@@ -18,11 +18,11 @@ def flac_bytes(rate, seconds=1.0):
 
 
 def test_clean_transcript_uppercases_and_rejects_unsupported_characters():
-    assert clean_transcript("don't  stop") == "DON'T STOP"
-    assert clean_transcript("it’s fine") == "IT'S FINE"
+    assert clean_transcript("don't  stop") == "don't stop"
+    assert clean_transcript("it’s fine") == "it's fine"
     assert clean_transcript("call 911") is None
-    assert clean_transcript("Hello, world.") == "HELLO WORLD"
-    assert clean_transcript("well-known; fact?") == "WELL KNOWN FACT"
+    assert clean_transcript("Hello, world.") == "hello world"
+    assert clean_transcript("well-known; fact?") == "well known fact"
     assert clean_transcript("it costs $5") is None
     assert clean_transcript("   ") is None
     assert clean_transcript(None) is None
@@ -41,7 +41,7 @@ def test_convert_parquet_writes_resampled_flac_and_importable_metadata(tmp_path)
     kept, skipped = convert_parquet(shard, out, "audio", "text", "id", "speaker", shard_tag="t0-")
     assert (kept, skipped) == (2, 2)
     rows = [json.loads(line) for line in (out / "metadata.jsonl").read_text(encoding="utf-8").splitlines()]
-    assert [r["transcript"] for r in rows] == ["HELLO THERE", "GOOD MORNING"]
+    assert [r["transcript"] for r in rows] == ["hello there", "good morning"]
     assert rows[0]["speaker_id"] == "s1"
     wave, rate = sf.read(str(out / rows[0]["path"]))
     assert rate == 16000 and abs(len(wave) - 16000) < 20

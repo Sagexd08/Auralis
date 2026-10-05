@@ -15,7 +15,7 @@ from auralis_stt.train_stream import Prefetcher, StreamConfig, group_stream, mak
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "data"))
 
-WORDS = ["HELLO", "WORLD", "GOOD", "MORNING", "TEST", "SPEECH"]
+WORDS = ["hello", "world", "good", "morning", "test", "speech"]
 
 
 def wav_bytes(seconds, freq):

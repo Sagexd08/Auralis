@@ -78,7 +78,7 @@ def decode_group(rows, audio_col, text_col, tokenizer, min_seconds, max_seconds)
         if not (min_seconds <= seconds <= max_seconds):
             continue
         ids = tokenizer.encode(text)
-        if not ids or len(ids) > len(wave) // 160 // 4 - 2:
+        if not ids or tokenizer.unk_id in ids or len(ids) > len(wave) // 160 // 4 - 2:
             continue
         items.append(((np.clip(wave, -1.0, 1.0) * 32767).astype(np.int16), ids))
     return items
