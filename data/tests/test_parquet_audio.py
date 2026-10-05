@@ -21,7 +21,9 @@ def test_clean_transcript_uppercases_and_rejects_unsupported_characters():
     assert clean_transcript("don't  stop") == "DON'T STOP"
     assert clean_transcript("it’s fine") == "IT'S FINE"
     assert clean_transcript("call 911") is None
-    assert clean_transcript("hello, world") is None
+    assert clean_transcript("Hello, world.") == "HELLO WORLD"
+    assert clean_transcript("well-known; fact?") == "WELL KNOWN FACT"
+    assert clean_transcript("it costs $5") is None
     assert clean_transcript("   ") is None
     assert clean_transcript(None) is None
 

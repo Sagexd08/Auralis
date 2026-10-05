@@ -10,10 +10,11 @@ from scipy.signal import resample_poly
 
 TARGET_SR = 16000
 DISALLOWED = re.compile(r"[^A-Z' ]")
+PUNCTUATION = str.maketrans({c: " " for c in '.,?!;:"()-'})
 
 
 def clean_transcript(text) -> str | None:
-    cleaned = (text or "").upper().replace("’", "'").replace("`", "'")
+    cleaned = (text or "").upper().replace("’", "'").replace("`", "'").translate(PUNCTUATION)
     if DISALLOWED.search(cleaned):
         return None
     cleaned = " ".join(cleaned.split())
