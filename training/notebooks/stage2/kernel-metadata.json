@@ -1,0 +1,15 @@
+{
+  "id": "sagexd08/auralis-train-stage2",
+  "title": "Auralis Train Stage2",
+  "code_file": "auralis_stage2.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_internet": "true",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [
+    "sagexd08/auralis-train-ls460"
+  ]
+}

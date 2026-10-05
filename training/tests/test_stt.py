@@ -145,3 +145,25 @@ def test_end_to_end_overfit_checkpoint_and_resume(tmp_path):
     cfg.eval_every = 20
     _, _, more = train(cfg, resume=True)
     assert more[0]["step"] == 221
+
+    warm = TrainConfig(
+        corpus_dir=str(tmp_path / "corpus"), corpus_name="synth", out_dir=str(tmp_path / "warm"), vocab_size=999,
+        batch_size=16, lr=1e-3, warmup_steps=2, max_steps=6, eval_every=3, val_pct=10, amp=False, init_from=str(ckpt),
+        model={"d_model": 8},
+    )
+    _, warm_tok, warm_history = train(warm)
+    assert warm_history[0]["step"] == 1
+    assert len(warm_tok) == len(tok)
+    warm_model, _ = load_model(latest_checkpoint(tmp_path / "warm"))
+    assert warm_model.cfg.d_model == 48
+
+    warm = TrainConfig(
+        corpus_dir=str(tmp_path / "corpus"), corpus_name="synth", out_dir=str(tmp_path / "warm"), vocab_size=999,
+        batch_size=16, lr=1e-3, warmup_steps=2, max_steps=6, eval_every=3, val_pct=10, amp=False, init_from=str(ckpt),
+        model={"d_model": 8},
+    )
+    _, warm_tok, warm_history = train(warm)
+    assert warm_history[0]["step"] == 1
+    assert len(warm_tok) == len(tok)
+    warm_model, _ = load_model(latest_checkpoint(tmp_path / "warm"))
+    assert warm_model.cfg.d_model == 48

@@ -39,6 +39,8 @@ class TrainConfig:
     grad_clip: float = 5.0
     spec_augment: bool = False
     time_budget: float = 0.0
+    init_from: str = ""
+    init_from: str = ""
     model: dict = field(default_factory=dict)
 
     @staticmethod
@@ -105,6 +107,14 @@ def train(cfg: TrainConfig, resume: bool = False):
     if resume and latest_checkpoint(out_dir):
         ckpt = latest_checkpoint(out_dir)
         model, tokenizer = load_model(ckpt, device)
+        model.train()
+    elif cfg.init_from:
+        ckpt = None
+        model, tokenizer = load_model(cfg.init_from, device)
+        model.train()
+    elif cfg.init_from:
+        ckpt = None
+        model, tokenizer = load_model(cfg.init_from, device)
         model.train()
     else:
         ckpt = None

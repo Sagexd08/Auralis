@@ -15,7 +15,10 @@ struct Args {
     model: PathBuf,
 
     #[arg(long)]
-    input: PathBuf,
+    input: Option<PathBuf>,
+
+    #[arg(long)]
+    batch: Option<PathBuf>,
 
     #[arg(long, value_enum, default_value_t = Preprocess::Raw)]
     preprocess: Preprocess,
@@ -53,17 +56,15 @@ fn read_wav_mono_f32(path: &PathBuf) -> Result<(Vec<f32>, u32)> {
     Ok((mono, spec.sample_rate))
 }
 
-fn main() -> Result<()> {
-    let args = Args::parse();
+fn prepare(path: &PathBuf, preprocess: Preprocess, report_quality: bool) -> Result<Vec<f32>> {
+    let (samples, sample_rate) = read_wav_mono_f32(path)?;
 
-    let (samples, sample_rate) = read_wav_mono_f32(&args.input)?;
-
-    if args.quality {
+    if report_quality {
         let at_48k = resample::resample(&samples, sample_rate, 48_000);
         eprintln!("quality: {}", quality::analyze_48k(&at_48k).summary());
     }
 
-    let samples_16k = match args.preprocess {
+    Ok(match preprocess {
         Preprocess::Raw => resample::resample(&samples, sample_rate, 16_000),
         Preprocess::VadDenoise => {
             let at_48k = resample::resample(&samples, sample_rate, 48_000);
@@ -71,9 +72,26 @@ fn main() -> Result<()> {
             let denoised = denoise::denoise_48k(&trimmed);
             resample::resample(&denoised, 48_000, 16_000)
         }
-    };
+    })
+}
 
+fn main() -> Result<()> {
+    let args = Args::parse();
     let engine = load_engine(&args.model)?;
+
+    if let Some(list) = &args.batch {
+        let text = std::fs::read_to_string(list).with_context(|| format!("failed to read batch list {list:?}"))?;
+        for line in text.lines().map(str::trim).filter(|l| !l.is_empty()) {
+            let path = PathBuf::from(line);
+            let samples_16k = prepare(&path, args.preprocess, false)?;
+            let transcript = join_segments(&engine.segments(&samples_16k, None)?);
+            println!("{line}	{transcript}");
+        }
+        return Ok(());
+    }
+
+    let input = args.input.context("pass --input <wav> or --batch <list>")?;
+    let samples_16k = prepare(&input, args.preprocess, args.quality)?;
     let transcript = join_segments(&engine.segments(&samples_16k, None)?);
 
     println!("{transcript}");

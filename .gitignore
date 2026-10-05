@@ -27,3 +27,5 @@ data/raw/
 data/corpora/
 data/manifests/
 .pytest_cache/
+models/*.onnx
+models/auralis.*
