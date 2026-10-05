@@ -11,6 +11,8 @@ KNOWN_LICENCES = {
     "cc0-1.0": (LicenseState.ELIGIBLE, True, True),
     "cc-by-4.0": (LicenseState.ELIGIBLE, True, True),
     "cc-by-3.0": (LicenseState.ELIGIBLE, True, True),
+    "cc-by-2.5": (LicenseState.ELIGIBLE, True, True),
+    "cc-by-2.0": (LicenseState.ELIGIBLE, True, True),
     "cc-by-sa-4.0": (LicenseState.ELIGIBLE, True, True),
     "mit": (LicenseState.ELIGIBLE, True, True),
     "apache-2.0": (LicenseState.ELIGIBLE, True, True),

@@ -1,0 +1,17 @@
+{
+  "id": "sagexd08/auralis-merge",
+  "title": "Auralis Merge",
+  "code_file": "auralis_merge.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_internet": "true",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [
+    "sagexd08/auralis-train-stage2",
+    "sagexd08/auralis-train-peoples",
+    "sagexd08/auralis-train-vox"
+  ]
+}

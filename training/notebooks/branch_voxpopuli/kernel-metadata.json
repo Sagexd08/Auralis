@@ -1,0 +1,15 @@
+{
+  "id": "sagexd08/auralis-train-vox",
+  "title": "Auralis Train Vox",
+  "code_file": "branch_voxpopuli.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_internet": "true",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [
+    "sagexd08/auralis-train-ls460"
+  ]
+}
